@@ -2,7 +2,7 @@
 name = "borsholder"
 version = "0.1.0"
 authors = ["kennytm <kennytm@gmail.com>"]
-description = "Combined status board of rust-lang/rust's Homu queue and GitHub PR status."
+description = "Dashboard of rust-lang/rust's bors queue."
 license = "MIT"
 
 [dependencies]

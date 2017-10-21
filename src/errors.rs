@@ -1,3 +1,5 @@
+//! Error types used by borsholder.
+
 // Temporary workaround until tera updated to error-chain 0.11.
 #![allow(unused_doc_comment)]
 

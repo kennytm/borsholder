@@ -1,3 +1,5 @@
+//! Local server of borsholder.
+
 use args::Args;
 use error_chain::ChainedError;
 use errors::Result;
@@ -11,6 +13,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use tera::Tera;
 
+/// Serves the borsholder web page configured according to `args`.
+///
+/// This method will not return until the server is shutdown.
 pub fn serve(mut args: Args) -> Result<()> {
     let mut tera = Tera::new(&args.templates)?;
     register_tera_filters(&mut tera);
@@ -28,9 +33,13 @@ pub fn serve(mut args: Args) -> Result<()> {
     Ok(())
 }
 
+/// Request handler of the borsholder server.
 struct Handler {
+    /// The Tera template engine.
     tera: Tera,
+    /// The reqwest client for making API requests.
     client: Client,
+    /// The command line arguments.
     args: Args,
 }
 
@@ -57,13 +66,20 @@ impl Service for Handler {
     }
 }
 
+/// Packaged JSON-like object to be sent to Tera for rendering.
 #[derive(Serialize)]
 struct RenderData<'a> {
+    /// The list of PRs.
     prs: HashMap<u32, Pr>,
+    /// PR statistics.
     stats: PrStats,
+    /// The command line arguments.
     args: &'a Args,
 }
 
+/// Renders the web page.
+///
+/// This method will *synchronously* download PR information from GitHub and Homu.
 fn render(tera: &Tera, client: &Client, args: &Args) -> Result<String> {
     let github_entries = ::github::query(client, &args.token, &args.owner, &args.repository)?;
     let homu_entries = ::homu::query(client, &args.homu_url)?;

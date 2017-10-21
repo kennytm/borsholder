@@ -1,25 +1,41 @@
+//! Home queue web scraper.
+
 use errors::{Result, ResultExt};
 use kuchiki::parse_html;
 use kuchiki::traits::TendrilSink;
 use markup5ever::ExpandedName;
 use reqwest::{Client, Url};
 
+/// An entry in the Homu queue.
 pub struct Entry {
+    /// Pull request number.
     pub number: u32,
+    /// Approval status.
     pub status: Status,
+    /// Whether the approval status applies to a "try" run.
     pub is_trying: bool,
+    /// Assigned reviewer.
     pub reviewer: String,
+    /// Person who approved the PR.
     pub approver: String,
+    /// Priority. Rollups are always assigned a priority of `-1`.
     pub priority: i32,
 }
 
+/// The approval status of a pull request in the Homu queue.
 #[derive(Serialize, PartialEq, Eq)]
 pub enum Status {
+    /// CI reported success, waiting for reviewer's further action.
     Success,
+    /// The pull request is sent to the CI, and is waiting for test result.
     Pending,
+    /// The pull request has been approved, waiting to be tested.
     Approved,
+    /// The pull request is being actively reviewed.
     Reviewing,
+    /// Error while testing the pull request, likely due to merge conflict.
     Error,
+    /// CI reported failure.
     Failure,
 }
 
@@ -29,12 +45,15 @@ impl Default for Status {
     }
 }
 
+/// Obtains the list of pull requests and associated information from Homu queue.
 pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>> {
     let mut resp = client.get(url.clone()).send()?.error_for_status()?;
     let doc = parse_html().from_utf8().read_from(&mut resp)?;
 
     let mut res = Vec::new();
-    for tr in doc.select("#queue > tbody > tr").unwrap() {
+    for tr in doc.select("#queue > tbody > tr")
+        .expect("well-formed CSS query")
+    {
         let mut tds = tr.as_node()
             .children()
             .filter_map(|td| {
@@ -70,6 +89,7 @@ pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>> {
     Ok(res)
 }
 
+/// Parses the rendered approval status string into the status/is-try pair.
 fn parse_status(status_str: &str) -> (Status, bool) {
     let mut status = Status::Reviewing;
     let mut is_trying = false;
@@ -87,6 +107,7 @@ fn parse_status(status_str: &str) -> (Status, bool) {
     (status, is_trying)
 }
 
+/// Parses the rendered priority string.
 fn parse_priority(priority_str: &str) -> i32 {
     if priority_str == "rollup" {
         -1

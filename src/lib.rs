@@ -1,4 +1,17 @@
-#![recursion_limit = "512"]
+//! borsholder
+//! ==========
+//!
+//! **borsholder** is a dashboard for monitoring the [Rust compiler repository]'s pull requests
+//! status. It is a combination of rust-lang/rust's [Homu queue] with useful information (labels,
+//! last comment, CI status, etc) obtained from the GitHub API.
+//!
+//! See the [README] for usage.
+//!
+//! [Rust repository]: https://github.com/rust-lang/rust
+//! [Homu queue]: https://buildbot2.rust-lang.org/homu/queue/rust
+//! [README]: https://github.com/kennytm/borsholder
+
+#![cfg_attr(feature = "cargo-clippy", warn(warnings, clippy_pedantic))]
 
 extern crate ammonia;
 extern crate chrono;
@@ -36,6 +49,7 @@ use server::serve;
 use structopt::StructOpt;
 
 /// Runs the borsholder CLI.
+#[cfg_attr(feature = "cargo-clippy", allow(print_stdout))]
 pub fn run() -> Result<()> {
     let args = Args::from_args();
     println!("Please open http://{}", args.address);

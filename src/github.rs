@@ -1,15 +1,27 @@
+//! GitHub API access.
+
 use errors::Result;
 use reqwest::Client;
 use reqwest::header::{Authorization, Bearer};
 
+/// Types related to the main GraphQL query.
+///
+/// Please see [GitHub's GraphQL schema] for details.
+///
+/// [GitHub's GraphQL schema]: https://developer.github.com/v4/reference/query/
 pub mod graphql {
+    #![cfg_attr(feature = "cargo-clippy", allow(missing_docs_in_private_items))]
+
     use chrono::{DateTime, Utc};
 
+    /// A generic GraphQL connection, which is the same as a vector in our use case.
     #[derive(Deserialize)]
     pub struct Connection<T> {
+        /// List of nodes in this connection.
         pub nodes: Vec<T>,
     }
 
+    /// The reply of a GraphQL query.
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Reply {
@@ -111,20 +123,30 @@ pub mod graphql {
     }
 }
 
+/// A GraphQL request.
 #[derive(Serialize)]
 struct Request<'variables> {
+    /// The query string.
     query: &'static str,
+    /// Variables of the query.
     variables: Variables<'variables>,
 }
 
+/// Variables in a GraphQL request.
+///
+/// This structure is hard-coded to support the main GraphQL query, `QUERY`.
 #[derive(Serialize)]
 struct Variables<'variables> {
+    /// Owner of the repository.
     owner: &'variables str,
+    /// Name of the repository.
     repo: &'variables str,
 }
 
+/// URL to send the GraphQL requests.
 const GITHUB_ENDPOINT: &str = "https://api.github.com/graphql";
 
+/// The main GraphQL query.
 const QUERY: &str = r#"
 
 query($owner: String!, $repo: String!) {
@@ -177,6 +199,7 @@ query($owner: String!, $repo: String!) {
 
 "#;
 
+/// Obtains the list of open pull requests and associated information from GitHub.
 pub fn query(
     client: &Client,
     token: &str,

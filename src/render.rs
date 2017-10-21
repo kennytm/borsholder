@@ -1,3 +1,5 @@
+//! Utilities for rendering the page via Tera.
+
 use ammonia::Builder;
 use chrono_humanize::HumanTime;
 use chrono::{DateTime, Local, Utc};
@@ -8,35 +10,54 @@ use std::fmt::Display;
 use std::time::UNIX_EPOCH;
 use tera::{Tera, Value};
 
+/// Information of a pull request.
 #[derive(Serialize)]
 pub struct Pr {
+    /// The author of the PR (GitHub username).
     author: String,
+    /// When the PR was opened.
     created_at: DateTime<Utc>,
+    /// The last time the PR was updated.
     updated_at: DateTime<Utc>,
+    /// Whether the PR can be merged cleanly.
     mergeable: MergeableState,
+    /// PR title.
     title: String,
+    /// Labels applied to the PR.
     labels: Vec<Label>,
+    /// When the last commit of this PR was committed.
     committed_at: DateTime<Utc>,
+    /// CI status of the last commit.
     ci_status: Vec<StatusContext>,
+    /// Last comment added to the PR (excluding review comments).
     last_comment: Option<Comment>,
+    /// Approval status.
     status: Status,
+    /// Whether the approval status applies to a "try" run.
     is_trying: bool,
+    /// Assigned reviewer.
     reviewer: String,
+    /// Person who approved the PR.
     approver: String,
+    /// Priority. Rollups are always assigned a priority of `-1`.
     priority: i32,
 }
 
+/// Statistics about all the pull requests in the queue.
 #[derive(Serialize, Default)]
 pub struct PrStats {
+    /// Total number of pull requests.
     count: u32,
+    /// Total number of approved, mergeable PRs.
     approved: u32,
+    /// Total number of approved, mergeable PRs with rollup priority.
     rollups: u32,
 }
 
 // Cannot derive default since it is not implemented for DateTime.
 impl Default for Pr {
-    fn default() -> Pr {
-        Pr {
+    fn default() -> Self {
+        Self {
             author: String::new(),
             created_at: UNIX_EPOCH.into(),
             updated_at: UNIX_EPOCH.into(),
@@ -55,15 +76,21 @@ impl Default for Pr {
     }
 }
 
+/// Information of a PR comment.
 #[derive(Serialize)]
 struct Comment {
+    /// Database ID, used to produce direct link to the comment.
     id: u64,
+    /// Author of the comment.
     author: String,
+    /// HTML body of the comment. The HTML should be already sanitized.
     body: String,
+    /// When the comment was published.
     published_at: DateTime<Utc>,
 }
 
 lazy_static! {
+    /// The sanitizer used to clean up a raw PR comment.
     static ref HTML_SANITIZER: Builder<'static> = {
         let mut builder = Builder::new();
         builder.tags(hashset![
@@ -82,6 +109,7 @@ lazy_static! {
     };
 }
 
+/// Combines information from GitHub and Homu to get a list of pull request information.
 pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> HashMap<u32, Pr> {
     let mut prs = HashMap::new();
 
@@ -124,6 +152,7 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
     prs
 }
 
+/// Reads in an iterator of PR references, and produces statistics about them.
 pub fn summarize_prs<'a, I: IntoIterator<Item = &'a Pr>>(prs: I) -> PrStats {
     let mut stats = PrStats::default();
     for pr in prs {
@@ -138,7 +167,7 @@ pub fn summarize_prs<'a, I: IntoIterator<Item = &'a Pr>>(prs: I) -> PrStats {
     stats
 }
 
-
+/// Registers some Tera filters, testers and global functions needed for rendering.
 pub fn register_tera_filters(tera: &mut Tera) {
     tera.register_filter("local_datetime", |input, _| {
         let result = parse_datetime(&input)?.with_timezone(&Local).to_rfc2822();
@@ -159,7 +188,7 @@ pub fn register_tera_filters(tera: &mut Tera) {
     });
     tera.register_tester("starting_with", |value, mut params| {
         let prefix_value = params.swap_remove(0);
-        let prefix = prefix_value.as_str().unwrap();
+        let prefix = prefix_value.as_str().expect("prefix should be a string");
         if let Some(s) = value.as_ref().and_then(Value::as_str) {
             Ok(s.starts_with(prefix))
         } else {
@@ -168,6 +197,7 @@ pub fn register_tera_filters(tera: &mut Tera) {
     });
 }
 
+/// Parses a Tera value into a `DateTime`.
 fn parse_datetime(input: &Value) -> ::tera::Result<DateTime<Utc>> {
     let datetime = input
         .as_str()
@@ -176,6 +206,7 @@ fn parse_datetime(input: &Value) -> ::tera::Result<DateTime<Utc>> {
     map_err_to_string(datetime)
 }
 
+/// If the result is an error, converts it to a string so that it can be recognized by Tera.
 fn map_err_to_string<T, E: Display>(a: Result<T, E>) -> ::tera::Result<T> {
     Ok(a.map_err(|e| e.to_string())?)
 }
