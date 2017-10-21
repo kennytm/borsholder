@@ -42,6 +42,7 @@ mod github;
 mod homu;
 mod render;
 mod server;
+mod ttl;
 
 use args::Args;
 use errors::Result;

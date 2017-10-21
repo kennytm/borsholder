@@ -9,9 +9,12 @@ use hyper::header::ContentType;
 use hyper::server::{Http, Request, Response, Service};
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats};
 use reqwest::{Client, Proxy};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::time::Duration;
 use tera::Tera;
+use ttl::Cache;
 
 /// Serves the borsholder web page configured according to `args`.
 ///
@@ -26,7 +29,12 @@ pub fn serve(mut args: Args) -> Result<()> {
     let client = builder.build()?;
     let address = args.address;
 
-    let handler = Rc::new(Handler { tera, client, args });
+    let handler = Rc::new(Handler {
+        tera,
+        client,
+        args,
+        api_cache: RefCell::new(Cache::new()),
+    });
     let server = Http::new().bind(&address, move || Ok(Rc::clone(&handler)))?;
     server.run()?;
 
@@ -41,6 +49,19 @@ struct Handler {
     client: Client,
     /// The command line arguments.
     args: Args,
+    /// The cached API response.
+    api_cache: RefCell<Cache<HashMap<u32, Pr>>>,
+}
+
+/// Packaged JSON-like object to be sent to Tera for rendering.
+#[derive(Serialize)]
+struct RenderData<'a> {
+    /// The list of PRs.
+    prs: &'a HashMap<u32, Pr>,
+    /// PR statistics.
+    stats: PrStats,
+    /// The command line arguments.
+    args: &'a Args,
 }
 
 impl Service for Handler {
@@ -51,7 +72,7 @@ impl Service for Handler {
 
     fn call(&self, _: Request) -> Self::Future {
         let mut response = Response::new();
-        match render(&self.tera, &self.client, &self.args) {
+        match self.render() {
             Ok(body) => {
                 response.set_status(StatusCode::Ok);
                 response.headers_mut().set(ContentType::html());
@@ -66,25 +87,21 @@ impl Service for Handler {
     }
 }
 
-/// Packaged JSON-like object to be sent to Tera for rendering.
-#[derive(Serialize)]
-struct RenderData<'a> {
-    /// The list of PRs.
-    prs: HashMap<u32, Pr>,
-    /// PR statistics.
-    stats: PrStats,
-    /// The command line arguments.
-    args: &'a Args,
-}
-
-/// Renders the web page.
-///
-/// This method will *synchronously* download PR information from GitHub and Homu.
-fn render(tera: &Tera, client: &Client, args: &Args) -> Result<String> {
-    let github_entries = ::github::query(client, &args.token, &args.owner, &args.repository)?;
-    let homu_entries = ::homu::query(client, &args.homu_url)?;
-    let prs = parse_prs(github_entries, homu_entries);
-    let stats = summarize_prs(prs.values());
-    let body = tera.render("index.html", &RenderData { prs, stats, args })?;
-    Ok(body)
+impl Handler {
+    /// Renders the web page.
+    ///
+    /// This method will *synchronously* download PR information from GitHub and Homu.
+    fn render(&self) -> Result<String> {
+        let args = &self.args;
+        let mut prs_cache = self.api_cache.borrow_mut();
+        let prs = prs_cache.get_or_refresh(Duration::from_secs(5), || -> Result<_> {
+            let github = ::github::query(&self.client, &args.token, &args.owner, &args.repository)?;
+            let homu = ::homu::query(&self.client, &self.args.homu_url)?;
+            Ok(parse_prs(github, homu))
+        })?;
+        let stats = summarize_prs(prs.values());
+        let data = RenderData { prs, stats, args };
+        let body = self.tera.render("index.html", &data)?;
+        Ok(body)
+    }
 }
