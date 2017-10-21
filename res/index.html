@@ -10,13 +10,14 @@
             font-size: 12pt;
         }
         #queue {
-            padding: 24px 0 180px 48px;
+            padding: 24px 0 180px 0;
+            margin: auto;
+            width: 1280px;
         }
         #queue > li {
             display: block;
             position: relative;
-            width: 960px;
-            height: 72px;
+            height: 48px;
             margin: 6px 0;
         }
         .hidden {
@@ -26,13 +27,14 @@
             font-size: 2em;
             font-weight: 100;
             position: absolute;
-            top: 16px;
+            top: 4px;
             left: 4px;
         }
         .title {
             position: absolute;
             left: 120px;
             top: 6px;
+            font-weight: 500;
         }
         .metadata {
             position: absolute;
@@ -58,30 +60,51 @@
             box-shadow: inset 0 -1px 0 rgba(27,31,35,0.12)
         }
         .status-Success {
-            background: #e7f2ff;
+            background: #f3f8ff; /* hsluv(240, 97.5, 97.5) */
         }
         .status-Pending {
-            background: #fff1b6;
+            background: #fff8de; /* hsluv(75, 97.5, 97.5) */
         }
         .status-Approved {
-            background: #caffb9;
+            background: #e6ffe0; /* hsluv(120, 97.5, 97.5) */
         }
         .status-Error {
-            background: #fbecff;
+            background: #fdf5ff; /* hsluv(300, 97.5, 97.5) */
         }
         .status-Failure {
-            background: #ffecef;
+            background: #fff6f7; /* hsluv(0, 97.5, 97.5) */
+        }
+        .status-Reviewing {
+            background: #f8f8f8; /* hsluv(0, 0, 97.5) */
+        }
+        .status-Success:hover {
+            background: #e7f2ff; /* hsluv(240, 100, 95) */
+        }
+        .status-Pending:hover {
+            background: #fff1b6; /* hsluv(75, 100, 95) */
+        }
+        .status-Approved:hover {
+            background: #caffb9; /* hsluv(120, 100, 95) */
+        }
+        .status-Error:hover {
+            background: #fbecff; /* hsluv(300, 100, 95) */
+        }
+        .status-Failure:hover {
+            background: #ffecef; /* hsluv(0, 100, 95) */
+        }
+        .status-Reviewing:hover {
+            background: #f1f1f1; /* hsluv(0, 0, 95) */
         }
         .ci-status {
             padding: 0;
             position: absolute;
-            left: 120px;
-            top: 44px;
+            right: 13px;
+            top: 26px;
+            font-size: 0.8em;
         }
         .ci-status > li {
             display: inline;
-            margin-right: 12px;
-            font-size: 0.9em;
+            margin-left: 12px;
         }
         .ci-status-merge-conflict {
             font-weight: 800;
@@ -90,8 +113,8 @@
         }
         .priority {
             position: absolute;
-            right: 6px;
-            font-size: 3em;
+            right: 180px;
+            font-size: 2.5em;
             font-style: italic;
             font-weight: 700;
             color: rgba(0,0,0,0.05);
@@ -128,7 +151,7 @@
         .tags {
             position: absolute;
             right: 12px;
-            top: 46px;
+            top: 4px;
         }
         /* GFM stuff */
         .email-quoted-reply {
@@ -161,10 +184,12 @@
         }
         .order {
             position: absolute;
-            top: 24px;
-            left: 9px;
+            top: 12px;
+            left: 0px;
+            width: 18px;
             font-size: 0.5em;
             color: #999;
+            text-align: right;
         }
         #filter {
             width: 16em;
@@ -239,27 +264,6 @@
                 {% endif %}
             </div>
             <ul class="ci-status">
-                <li title="r? @{{ pr.reviewer }}
-r={{ pr.approver }}">
-                    {% if pr.status == "Success" %}
-                        ☀️ success
-                    {% elif pr.status == "Pending" %}
-                        ⏳ pending
-                    {% elif pr.status == "Approved" %}
-                        📌 approved
-                    {% elif pr.status == "Reviewing" %}
-                        🔹 reviewing
-                    {% elif pr.status == "Error" %}
-                        💥 error
-                    {% elif pr.status == "Failure" %}
-                        💔 failure
-                    {% else %}
-                        ❓ {{ pr.status }}
-                    {% endif %}
-                    {% if pr.is_trying %}
-                    (try)
-                    {% endif %}
-                </li>
                 {% if pr.mergeable == "CONFLICTING" %}
                 <li class="ci-status-merge-conflict">☔️ merge conflict</li>
                 {% endif %}
@@ -284,20 +288,31 @@ r={{ pr.approver }}">
                             {% else %}
                                 {{ ci.context }}
                             {% endif %}
-                            {% if ci.state == "ERROR" %}
-                                errored
-                            {% elif ci.state == "FAILURE" %}
-                                failed
-                            {% elif ci.state == "PENDING" %}
-                                running
-                            {% elif ci.state == "SUCCESS" %}
-                                passed
-                            {% else %}
-                                {{ ci.state | lower }}
-                            {% endif %}
+                            <span class="hidden">{{ ci.description }}</span>
                         </a>
                     </li>
                 {% endfor %}
+                <li title="r? @{{ pr.reviewer }}
+r={{ pr.approver }}">
+                    {% if pr.status == "Success" %}
+                        ☀️ success
+                    {% elif pr.status == "Pending" %}
+                        ⏳ pending
+                    {% elif pr.status == "Approved" %}
+                        📌 approved
+                    {% elif pr.status == "Reviewing" %}
+                        🔹 reviewing
+                    {% elif pr.status == "Error" %}
+                        💥 error
+                    {% elif pr.status == "Failure" %}
+                        💔 failure
+                    {% else %}
+                        ❓ {{ pr.status }}
+                    {% endif %}
+                    {% if pr.is_trying %}
+                    (try)
+                    {% endif %}
+                </li>
             </ul>
             <div class="tags">
                 {% for label in pr.labels %}
@@ -413,8 +428,8 @@ r={{ pr.approver }}">
             });
             for (var i = 0; i < array.length; ++ i) {
                 var li = array[i][1];
-                $prs.appendChild(li);
                 li.getElementsByClassName('order')[0].innerHTML = '#' + (i + 1);
+                $prs.appendChild(li);
             }
         };
         $sort.onchange = doSort;
