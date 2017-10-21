@@ -4,6 +4,14 @@ version = "0.1.0"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Dashboard of rust-lang/rust's bors queue."
 license = "MIT"
+repository = "https://github.com/kennytm/borsholder"
+keywords = ["bors", "homu"]
+readme = "README.md"
+
+[badges]
+travis-ci = { repository = "kennytm/borsholder" }
+is-it-maintained-issue-resolution = { repository = "kennytm/borsholder" }
+is-it-maintained-open-issues = { repository = "kennytm/borsholder" }
 
 [dependencies]
 ammonia = "1.0.0-rc1"
@@ -20,7 +28,6 @@ markup5ever = "0.5"
 reqwest = "0.8"
 serde = "1"
 serde_derive = "1"
-serde_json = "1"
 structopt = "0.1"
 structopt-derive = "0.1"
 tera = "0.10"
