@@ -2,7 +2,8 @@
 
 use errors::Result;
 use reqwest::Client;
-use reqwest::header::{Authorization, Bearer};
+use reqwest::header::{Authorization, Bearer, Headers, Raw};
+use std::str::from_utf8;
 
 /// Types related to the main GraphQL query.
 ///
@@ -207,7 +208,7 @@ pub fn query(
     repo: &str,
 ) -> Result<Vec<graphql::PullRequest>> {
     info!("Preparing to send GitHub request");
-    let reply = client
+    let mut response = client
         .post(GITHUB_ENDPOINT)
         .header(Authorization(Bearer {
             token: token.to_owned(),
@@ -217,10 +218,32 @@ pub fn query(
             variables: Variables { owner, repo },
         })
         .send()?
-        .error_for_status()?
-        .json::<graphql::Reply>()?;
+        .error_for_status()?;
+
+    {
+        let headers = response.headers();
+        let rate_limit_remaining = fetch_rate_limit(headers, "X-RateLimit-Remaining");
+        let rate_limit_limit = fetch_rate_limit(headers, "X-RateLimit-Limit");
+        info!(
+            "GitHub rate limit: {}/{}",
+            rate_limit_remaining,
+            rate_limit_limit
+        );
+    }
+
+    let reply = response.json::<graphql::Reply>()?;
 
     let prs = reply.data.repository.pull_requests.nodes;
     info!("Obtained {} PRs from GitHub", prs.len());
     Ok(prs)
+}
+
+/// Fetch rate-limit related number from the GitHub response.
+fn fetch_rate_limit(headers: &Headers, name: &str) -> u32 {
+    headers
+        .get_raw(name)
+        .and_then(Raw::one)
+        .and_then(|one| from_utf8(one).ok())
+        .and_then(|string| string.parse().ok())
+        .unwrap_or(0)
 }
