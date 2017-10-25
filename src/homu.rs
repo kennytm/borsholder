@@ -47,6 +47,8 @@ impl Default for Status {
 
 /// Obtains the list of pull requests and associated information from Homu queue.
 pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>> {
+    info!("Preparing to send Homu request");
+
     let mut resp = client.get(url.clone()).send()?.error_for_status()?;
     let doc = parse_html().from_utf8().read_from(&mut resp)?;
 
@@ -85,6 +87,8 @@ pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>> {
             priority,
         });
     }
+
+    info!("Obtained {} PRs from Homu", res.len());
 
     Ok(res)
 }

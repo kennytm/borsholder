@@ -206,6 +206,7 @@ pub fn query(
     owner: &str,
     repo: &str,
 ) -> Result<Vec<graphql::PullRequest>> {
+    info!("Preparing to send GitHub request");
     let reply = client
         .post(GITHUB_ENDPOINT)
         .header(Authorization(Bearer {
@@ -218,5 +219,8 @@ pub fn query(
         .send()?
         .error_for_status()?
         .json::<graphql::Reply>()?;
-    Ok(reply.data.repository.pull_requests.nodes)
+
+    let prs = reply.data.repository.pull_requests.nodes;
+    info!("Obtained {} PRs from GitHub", prs.len());
+    Ok(prs)
 }
