@@ -362,7 +362,7 @@ r={{ pr.approver }}">
         function updateSelectCount() {
             var allInputs = document.querySelectorAll('#queue input');
             var selectedCount = 0;
-            for (var i = 0; i < allInputs.length; ++ i) {
+            for (var i = allInputs.length - 1; i >= 0; -- i) {
                 selectedCount += allInputs[i].checked;
             }
             $('select-count').innerHTML = selectedCount;
@@ -434,6 +434,24 @@ r={{ pr.approver }}">
         };
         $sort.onchange = doSort;
         doSort();
+        $('rollup').onclick = function() {
+            var allInputs = document.querySelectorAll('#queue input');
+            var prs = [];
+            for (var i = allInputs.length - 1; i >= 0; -- i) {
+                var checkbox = allInputs[i];
+                if (checkbox.checked) {
+                    prs.push(allInputs[i].parentNode.parentNode.parentNode.dataset.number|0);
+                }
+            }
+            if (confirm('Create a rollup of ' + prs.length + ' PRs?')) {
+                var state = encodeURIComponent(JSON.stringify({
+                    cmd: 'rollup',
+                    repo_label: '{{ args.homu_url | url_last_path_component }}',
+                    nums: prs,
+                }));
+                open('https://github.com/login/oauth/authorize?client_id={{ args.homu_client_id }}&scope=public_repo,admin:repo_hook&state=' + state);
+            }
+        };
     </script>
 </body>
 </html>

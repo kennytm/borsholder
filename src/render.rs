@@ -5,9 +5,11 @@ use chrono_humanize::HumanTime;
 use chrono::{DateTime, Local, Utc};
 use github::graphql::{Label, MergeableState, PullRequest, StatusContext};
 use homu::{Entry, Status};
+use reqwest::Url;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::time::UNIX_EPOCH;
+use std::str::FromStr;
 use tera::{Tera, Value};
 
 /// Information of a pull request.
@@ -170,11 +172,13 @@ pub fn summarize_prs<'a, I: IntoIterator<Item = &'a Pr>>(prs: I) -> PrStats {
 /// Registers some Tera filters, testers and global functions needed for rendering.
 pub fn register_tera_filters(tera: &mut Tera) {
     tera.register_filter("local_datetime", |input, _| {
-        let result = parse_datetime(&input)?.with_timezone(&Local).to_rfc2822();
+        let result = parse::<DateTime<Utc>>(&input)?
+            .with_timezone(&Local)
+            .to_rfc2822();
         Ok(Value::String(result))
     });
     tera.register_filter("relative_datetime", |input, _| {
-        let result = HumanTime::from(parse_datetime(&input)?).to_string();
+        let result = HumanTime::from(parse::<DateTime<Utc>>(&input)?).to_string();
         Ok(Value::String(result))
     });
     tera.register_filter("text_color", |input, _| {
@@ -185,6 +189,16 @@ pub fn register_tera_filters(tera: &mut Tera) {
         let luminance = red * 3 + green * 4 + blue;
         let color = if luminance >= 1020 { "#000" } else { "#fff" };
         Ok(Value::String(color.to_owned()))
+    });
+    tera.register_filter("url_last_path_component", |input, _| {
+        let last_component = parse::<Url>(&input)?
+            .path_segments()
+            .ok_or("URL has no path")?
+            .filter(|s| !s.is_empty())
+            .last()
+            .unwrap_or("")
+            .to_owned();
+        Ok(Value::String(last_component))
     });
     tera.register_tester("starting_with", |value, mut params| {
         let prefix_value = params.swap_remove(0);
@@ -197,13 +211,13 @@ pub fn register_tera_filters(tera: &mut Tera) {
     });
 }
 
-/// Parses a Tera value into a `DateTime`.
-fn parse_datetime(input: &Value) -> ::tera::Result<DateTime<Utc>> {
-    let datetime = input
-        .as_str()
-        .ok_or("expecting a string as input")?
-        .parse::<DateTime<Utc>>();
-    map_err_to_string(datetime)
+/// Parses a Tera value into a value.
+fn parse<T: FromStr>(input: &Value) -> ::tera::Result<T>
+where
+    T::Err: Display,
+{
+    let value = input.as_str().ok_or("expecting a string as input")?.parse();
+    map_err_to_string(value)
 }
 
 /// If the result is an error, converts it to a string so that it can be recognized by Tera.
