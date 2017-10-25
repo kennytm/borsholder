@@ -77,7 +77,7 @@ pub mod graphql {
     #[serde(rename_all = "camelCase")]
     pub struct Commit {
         pub committed_date: DateTime<Utc>,
-        pub status: Status,
+        pub status: Option<Status>,
     }
 
     #[derive(Deserialize)]

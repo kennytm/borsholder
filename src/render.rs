@@ -126,7 +126,7 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
                 title: gh.title,
                 labels: gh.labels.nodes,
                 committed_at: commit.committed_date,
-                ci_status: commit.status.contexts,
+                ci_status: commit.status.map_or_else(Vec::new, |s| s.contexts),
                 last_comment: comment.map(|c| {
                     Comment {
                         id: c.database_id,
