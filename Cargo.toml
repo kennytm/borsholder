@@ -1,6 +1,6 @@
 [package]
 name = "borsholder"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Dashboard of rust-lang/rust's bors queue."
 license = "MIT"
@@ -12,9 +12,10 @@ readme = "README.md"
 travis-ci = { repository = "kennytm/borsholder" }
 is-it-maintained-issue-resolution = { repository = "kennytm/borsholder" }
 is-it-maintained-open-issues = { repository = "kennytm/borsholder" }
+maintenance = { status = "actively-developed" }
 
 [dependencies]
-ammonia = "1.0.0-rc1"
+ammonia = "1.0.0-rc2"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-humanize = "0.0.10"
 env_logger = "0.4"
