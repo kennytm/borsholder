@@ -1,0 +1,227 @@
+html, body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, 'Apple Color Emoji', sans-serif;
+    font-size: 12pt;
+}
+#queue {
+    padding: 24px 0 400px 0;
+    margin: auto;
+    width: 1280px;
+}
+#queue > li {
+    display: block;
+    position: relative;
+    height: 48px;
+    margin: 6px 0;
+}
+.hidden {
+    display: none !important;
+}
+.number {
+    font-size: 2em;
+    font-weight: 100;
+    position: absolute;
+    top: 4px;
+    left: 4px;
+}
+.title {
+    position: absolute;
+    left: 120px;
+    top: 6px;
+    font-weight: 500;
+}
+.metadata {
+    position: absolute;
+    left: 120px;
+    top: 29px;
+    font-size: 0.75em;
+    color: #888;
+}
+.actor, .comment-metadata > a {
+    color: #88a;
+}
+a {
+    text-decoration: none;
+    color: #006;
+}
+a:hover {
+    text-decoration: underline;
+}
+.tag {
+    font-size: 0.75em;
+    padding: 1px 3px;
+    border-radius: 2px;
+    box-shadow: inset 0 -1px 0 rgba(27,31,35,0.12)
+}
+.status-Success {
+    background: #f3f8ff; /* hsluv(240, 97.5, 97.5) */
+}
+.status-Pending {
+    background: #fff8de; /* hsluv(75, 97.5, 97.5) */
+}
+.status-Approved {
+    background: #e6ffe0; /* hsluv(120, 97.5, 97.5) */
+}
+.status-Error {
+    background: #fdf5ff; /* hsluv(300, 97.5, 97.5) */
+}
+.status-Failure {
+    background: #fff6f7; /* hsluv(0, 97.5, 97.5) */
+}
+.status-Reviewing {
+    background: #f8f8f8; /* hsluv(0, 0, 97.5) */
+}
+.status-Success:hover {
+    background: #e7f2ff; /* hsluv(240, 100, 95) */
+}
+.status-Pending:hover {
+    background: #fff1b6; /* hsluv(75, 100, 95) */
+}
+.status-Approved:hover {
+    background: #caffb9; /* hsluv(120, 100, 95) */
+}
+.status-Error:hover {
+    background: #fbecff; /* hsluv(300, 100, 95) */
+}
+.status-Failure:hover {
+    background: #ffecef; /* hsluv(0, 100, 95) */
+}
+.status-Reviewing:hover {
+    background: #f1f1f1; /* hsluv(0, 0, 95) */
+}
+.ci-status {
+    padding: 0;
+    position: absolute;
+    right: 13px;
+    top: 26px;
+    font-size: 0.8em;
+}
+.ci-status > li {
+    display: inline;
+    margin-left: 12px;
+}
+.ci-status-merge-conflict {
+    font-weight: 800;
+    border: 3px double red;
+    padding: 0 2px;
+}
+.priority {
+    position: absolute;
+    right: 180px;
+    font-size: 2.5em;
+    font-style: italic;
+    font-weight: 700;
+    color: rgba(0,0,0,0.05);
+}
+.comment {
+    display: none;
+    position: absolute;
+    z-index: 1;
+    background: #f8f8f8;
+    width: 960px;
+    max-height: 360px;
+    overflow: auto;
+    padding: 12px;
+    box-shadow: 0px 3px 12px #aaa;
+    top: 14px;
+    left: -15px;
+    font-size: 1.2em;
+    color: #111;
+    border-radius: 3px;
+    line-height: 1.5;
+}
+.reply-line {
+    font-weight: bold;
+    background: #eed;
+    margin: -12px -12px 6px -12px;
+    padding: 6px 12px;
+}
+.reply-body {
+    margin-bottom: 18px;
+}
+.reply-body p {
+    margin: 9px 0 0 0;
+}
+.reply-body .ci-status {
+    position: static;
+}
+.comment-metadata:hover + .comment, .comment:hover {
+    display: block;
+}
+.tags {
+    position: absolute;
+    right: 12px;
+    top: 4px;
+}
+/* GFM stuff */
+.email-quoted-reply {
+    white-space: pre;
+}
+.email-quoted-reply, blockquote {
+    border-left: 3px solid #bbb;
+    padding-left: 6px;
+    margin-left: 6px;
+}
+pre {
+    background: #ddd;
+    padding: 6px;
+    font-size: 0.75em;
+}
+.reply-body code, kbd {
+    background: #eee;
+    font-size: 0.9em;
+    padding: 0 3px;
+}
+.reply-body pre > code {
+    background: initial;
+    font-size: 1em;
+}
+kbd {
+    border: 2px #888 outset;
+    border-radius: 5px;
+}
+.reply-body td, .reply-body th {
+    border: 1px solid #aaa;
+    padding: 3px 6px;
+}
+.reply-body table {
+    border-collapse: collapse;
+}
+/* End GFM stuff */
+#bar {
+    position: fixed;
+    margin: 0;
+    padding: 3px;
+    z-index: 2;
+    width: 100%;
+    background: rgba(199, 193, 244, 0.9);
+    height: 24px;
+    left: 0;
+    top: 0;
+}
+#bar > li {
+    display: inline;
+    margin-left: 18px;
+}
+.order {
+    position: absolute;
+    top: 12px;
+    left: 0px;
+    width: 18px;
+    font-size: 0.5em;
+    color: #999;
+    text-align: right;
+}
+#filter {
+    width: 16em;
+}
+.reply-body-ReferencedEvent, .reply-body-CrossReferencedEvent, .reply-body-Commit, .reply-body-RenamedTitleEvent {
+    font-size: 0.8em;
+    padding-left: 1em;
+    border-left: 6px double #00acf7;
+}
+.reply-body-Commit {
+    border-left-color: #fe7f00;
+}
+.reply-body-RenamedTitleEvent {
+    border-left-color: #a2a900;
+}

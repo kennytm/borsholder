@@ -4,207 +4,16 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>borsholder</title>
-    <style>
-        html, body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, 'Apple Color Emoji', sans-serif;
-            font-size: 12pt;
-        }
-        #queue {
-            padding: 24px 0 180px 0;
-            margin: auto;
-            width: 1280px;
-        }
-        #queue > li {
-            display: block;
-            position: relative;
-            height: 48px;
-            margin: 6px 0;
-        }
-        .hidden {
-            display: none !important;
-        }
-        .number {
-            font-size: 2em;
-            font-weight: 100;
-            position: absolute;
-            top: 4px;
-            left: 4px;
-        }
-        .title {
-            position: absolute;
-            left: 120px;
-            top: 6px;
-            font-weight: 500;
-        }
-        .metadata {
-            position: absolute;
-            left: 120px;
-            top: 29px;
-            font-size: 0.75em;
-            color: #888;
-        }
-        .metadata > a {
-            color: #88a;
-        }
-        a {
-            text-decoration: none;
-            color: #006;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        .tag {
-            font-size: 0.75em;
-            padding: 1px 3px;
-            border-radius: 2px;
-            box-shadow: inset 0 -1px 0 rgba(27,31,35,0.12)
-        }
-        .status-Success {
-            background: #f3f8ff; /* hsluv(240, 97.5, 97.5) */
-        }
-        .status-Pending {
-            background: #fff8de; /* hsluv(75, 97.5, 97.5) */
-        }
-        .status-Approved {
-            background: #e6ffe0; /* hsluv(120, 97.5, 97.5) */
-        }
-        .status-Error {
-            background: #fdf5ff; /* hsluv(300, 97.5, 97.5) */
-        }
-        .status-Failure {
-            background: #fff6f7; /* hsluv(0, 97.5, 97.5) */
-        }
-        .status-Reviewing {
-            background: #f8f8f8; /* hsluv(0, 0, 97.5) */
-        }
-        .status-Success:hover {
-            background: #e7f2ff; /* hsluv(240, 100, 95) */
-        }
-        .status-Pending:hover {
-            background: #fff1b6; /* hsluv(75, 100, 95) */
-        }
-        .status-Approved:hover {
-            background: #caffb9; /* hsluv(120, 100, 95) */
-        }
-        .status-Error:hover {
-            background: #fbecff; /* hsluv(300, 100, 95) */
-        }
-        .status-Failure:hover {
-            background: #ffecef; /* hsluv(0, 100, 95) */
-        }
-        .status-Reviewing:hover {
-            background: #f1f1f1; /* hsluv(0, 0, 95) */
-        }
-        .ci-status {
-            padding: 0;
-            position: absolute;
-            right: 13px;
-            top: 26px;
-            font-size: 0.8em;
-        }
-        .ci-status > li {
-            display: inline;
-            margin-left: 12px;
-        }
-        .ci-status-merge-conflict {
-            font-weight: 800;
-            border: 3px double red;
-            padding: 0 2px;
-        }
-        .priority {
-            position: absolute;
-            right: 180px;
-            font-size: 2.5em;
-            font-style: italic;
-            font-weight: 700;
-            color: rgba(0,0,0,0.05);
-        }
-        .comment {
-            display: none;
-            position: absolute;
-            z-index: 1;
-            background: #f8f8f8;
-            width: 813px;
-            max-height: 240px;
-            overflow: auto;
-            padding: 12px;
-            box-shadow: 0px 3px 12px #aaa;
-            top: 14px;
-            left: -60px;
-            font-size: 1.2em;
-            color: #111;
-            border-radius: 3px;
-            line-height: 1.5;
-        }
-        .reply-line {
-            font-weight: bold;
-            background: #eed;
-            margin: -12px -12px 6px -12px;
-            padding: 6px 12px;
-        }
-        .reply-body p {
-            margin: 9px 0 0 0;
-        }
-        .comment-metadata:hover + .comment, .comment:hover {
-            display: block;
-        }
-        .tags {
-            position: absolute;
-            right: 12px;
-            top: 4px;
-        }
-        /* GFM stuff */
-        .email-quoted-reply {
-            white-space: pre;
-        }
-        .email-quoted-reply, blockquote {
-            border-left: 3px solid #bbb;
-            padding-left: 6px;
-            margin-left: 6px;
-        }
-        pre {
-            background: #ddd;
-            padding: 6px;
-            font-size: 0.75em;
-        }
-        #bar {
-            position: fixed;
-            margin: 0;
-            padding: 3px;
-            z-index: 2;
-            width: 100%;
-            background: rgba(199, 193, 244, 0.9);
-            height: 24px;
-            left: 0;
-            top: 0;
-        }
-        #bar > li {
-            display: inline;
-            margin-left: 18px;
-        }
-        .order {
-            position: absolute;
-            top: 12px;
-            left: 0px;
-            width: 18px;
-            font-size: 0.5em;
-            color: #999;
-            text-align: right;
-        }
-        #filter {
-            width: 16em;
-        }
-        </style>
+    <style>{% include "common.css" %}</style>
 </head>
 <body>
+    {% import "macros.html" as m %}
     <ul id="bar">
         <li>
             Sort by <select id="sort">
                 <option value="priority">approval status</option>
                 <option value="update">recent update</option>
-                <option value="reply">last reply</option>
                 <option value="commit">commit time</option>
-                <option value="number">PR number</option>
             </select>
         </li>
         <li><input id="filter" type="search" placeholder="filter (case-insensitive regex)"></li>
@@ -225,10 +34,12 @@
     </ul>
     <ul id="queue">
         {% for number, pr in prs %}
+            {% set last_event = pr.timeline | last %}
+            {% set update_at = m::event_time(event=last_event) %}
+            {% set update_user = m::event_user(event=last_event) %}
         <li id="pr-{{ number }}" class="status-{{ pr.status }}"
                 data-priority="{{ pr.status }}:{{ pr.priority }}:{{ number }}"
-                data-update="{{ pr.updated_at }}"
-                data-reply="{% if pr.last_comment %}{{ pr.last_comment.published_at }}{% else %}0000-01-01T00:00:00Z{% endif %}"
+                data-update="{{ update_at }}"
                 data-commit="{{ pr.committed_at }}"
                 data-number="{{ number }}">
             <div class="order">#0</div>
@@ -239,76 +50,80 @@
                 <a href="https://github.com/{{ args.owner }}/{{ args.repository }}/pull/{{ number }}">{{ pr.title }}</a>
             </div>
             <div class="metadata">
-                opened <span class="datetime" title="{{ pr.created_at | local_datetime }}">{{ pr.created_at | relative_datetime }}</span>
-                by <a class="actor" href="https://github.com/{{ pr.author }}">@{{ pr.author }}</a>
+                opened {{ m::rel_time(datetime=pr.created_at) }} by {{ m::actor(username=pr.author) }}
                 ::
-                updated <span class="datetime" title="{{ pr.updated_at | local_datetime }}">{{ pr.updated_at | relative_datetime }}</span>
+                {% if pr.reviewer %}
+                    r? {{ m::actor(username=pr.reviewer) }}
+                {% else %}
+                    unassigned
+                {% endif %}
                 ::
-                committed <span class="datetime" title="{{ pr.committed_at | local_datetime }}">{{ pr.committed_at | relative_datetime }}</span>
+                committed {{ m::rel_time(datetime=pr.committed_at) }}
                 ::
-                {% if pr.last_comment %}
                 <span class="comment-metadata">
-                    replied <a href="https://github.com/{{ args.owner }}/{{ args.repository }}/pull/{{ number }}#issuecomment-{{ pr.last_comment.id }}" class="datetime" title="{{ pr.last_comment.published_at | local_datetime }}">{{ pr.last_comment.published_at | relative_datetime }}</a>
-                    by <a class="actor" href="https://github.com/{{ pr.last_comment.author }}">@{{ pr.last_comment.author }}</a>
+                    updated
+                    {% set update_at_html = m::rel_time(datetime=update_at) %}
+                    {{ m::event_url(event=last_event, args=args, number=number, html=update_at_html) }}
+                    {% if update_user %}
+                        by {{ m::actor(username=update_user) }}
+                    {% endif %}
                 </span>
                 <div class="comment">
-                    <p class="reply-line">
-                        @{{ pr.last_comment.author }} (<a href="https://github.com/{{ args.owner }}/{{ args.repository }}/pull/{{ number }}#issuecomment-{{ pr.last_comment.id }}" class="datetime" title="{{ pr.last_comment.published_at | local_datetime }}">{{ pr.last_comment.published_at | relative_datetime }}</a>)
-                    </p>
-                    <div class="reply-body">
-                    {{ pr.last_comment.body | safe }}
-                    </div>
+                    {% for event in pr.timeline %}
+                        {% set at = m::event_time(event=event) %}
+                        {% set at_html = m::rel_time(datetime=at) %}
+                        {% set user = m::event_user(event=event) %}
+                        <p class="reply-line">
+                            {{ m::event_icon(event=event) }}
+                            {{ m::event_url(event=event, args=args, number=number, html=at_html) }}
+                            — {{ m::actor(username=user) }}
+                            {{ m::event_verb_phrase(event=event) }}
+                            {% if event.editor.login is defined %}
+                            <small>
+                                [last edited {{ m::rel_time(datetime=event.lastEditedAt) }}
+                                by {{ m::actor(username=event.editor.login) }}]
+                            </small>
+                            {% endif %}
+                        </p>
+                        <div class="reply-body reply-body-{{ event.__typename }}">
+                            {% if event.bodyHTML is defined %}
+                                {{ event.bodyHTML | sanitize | safe }}
+                            {% elif event.__typename == "CrossReferencedEvent" %}
+                                Ref {{ event.source.__typename }} #{{ event.source.number }}:
+                                <a href="{{ event.source.url }}">{{ event.source.title }}</a>
+                            {% elif event.__typename == "ReferencedEvent" %}
+                                Ref Commit <code>{{ event.commit.abbreviatedOid }}</code>:
+                                <a href="{{ event.commit.url }}">{{ event.commit.messageHeadline }}</a>
+                                {% if event.commit.status.contexts is defined %}
+                                <ul class="ci-status">
+                                    {{ m::cis(cis=event.commit.status.contexts) }}
+                                </ul>
+                                {% endif %}
+                            {% elif event.__typename == "Commit" %}
+                                Commit <code>{{ event.abbreviatedOid }}</code>:
+                                <a href="{{ event.url }}">{{ event.messageHeadline }}</a>
+                                {% if event.status.contexts is defined %}
+                                <ul class="ci-status">
+                                    {{ m::cis(cis=event.status.contexts) }}
+                                </ul>
+                                {% endif %}
+                            {% elif event.__typename == "RenamedTitleEvent" %}
+                                {{ event.previousTitle }}<br>
+                                ↓<br>
+                                {{ event.currentTitle }}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
                 </div>
-                {% else %}
-                    no replies
-                {% endif %}
             </div>
             <ul class="ci-status">
                 {% if pr.mergeable == "CONFLICTING" %}
                 <li class="ci-status-merge-conflict">☔️ merge conflict</li>
                 {% endif %}
-                {% for ci in pr.ci_status %}
-                    <li title="{{ ci.description }}">
-                        <a href="{{ ci.targetUrl }}">
-                            {% if ci.state == "ERROR" %}
-                                ❗️
-                            {% elif ci.state == "FAILURE" %}
-                                ❌
-                            {% elif ci.state == "PENDING" %}
-                                🌕
-                            {% elif ci.state == "SUCCESS" %}
-                                ✔️
-                            {% else %}
-                                ❓
-                            {% endif %}
-                            {% if ci.context == "continuous-integration&#x2F;travis-ci&#x2F;pr" %}
-                                travis
-                            {% elif ci.context == "continuous-integration&#x2F;appveyor&#x2F;pr" %}
-                                appveyor
-                            {% else %}
-                                {{ ci.context }}
-                            {% endif %}
-                            <span class="hidden">{{ ci.description }}</span>
-                        </a>
-                    </li>
-                {% endfor %}
+                {{ m::cis(cis=pr.ci_status) }}
                 <li title="r? @{{ pr.reviewer }}
 r={{ pr.approver }}">
-                    {% if pr.status == "Success" %}
-                        ☀️ success
-                    {% elif pr.status == "Pending" %}
-                        ⏳ pending
-                    {% elif pr.status == "Approved" %}
-                        📌 approved
-                    {% elif pr.status == "Reviewing" %}
-                        🔹 reviewing
-                    {% elif pr.status == "Error" %}
-                        💥 error
-                    {% elif pr.status == "Failure" %}
-                        💔 failure
-                    {% else %}
-                        ❓ {{ pr.status }}
-                    {% endif %}
+                    {{ m::homu_status(status=pr.status) }}
                     {% if pr.is_trying %}
                     (try)
                     {% endif %}
@@ -316,7 +131,7 @@ r={{ pr.approver }}">
             </ul>
             <div class="tags">
                 {% for label in pr.labels %}
-                <span class="tag" style="background:#{{ label.color }};color:{{ label.color | text_color }}">{{ label.name }}</span>
+                {{ m::label(label=label) }}
                 {% endfor %}
             </div>
             <div class="priority">
@@ -329,129 +144,6 @@ r={{ pr.approver }}">
         </li>
         {% endfor %}
     </ul>
-    <script>
-        'use strict';
-        function $(x) {
-            return document.getElementById(x);
-        }
-        var $filter = $('filter');
-        var $prs = $('queue');
-        var $sort = $('sort');
-        $filter.onkeyup = $filter.onsearch = function() {
-            var filterValue = $filter.value;
-            try {
-                var filter = new RegExp(filterValue, 'i');
-                $filter.setCustomValidity('');
-            } catch(e) {
-                $filter.setCustomValidity(e);
-                return;
-            }
-            var children = $prs.children;
-            var filterCount = 0;
-            for (var i = children.length - 1; i >= 0; -- i) {
-                var li = children[i];
-                if (filter.test(li.textContent.replace(/\s+/g, ' '))) {
-                    li.classList.remove('hidden');
-                    ++ filterCount;
-                } else {
-                    li.classList.add('hidden');
-                }
-            }
-            $('filter-status').innerHTML = filterValue && ('(' + filterCount + ' filtered)');
-        };
-        function updateSelectCount() {
-            var allInputs = document.querySelectorAll('#queue input');
-            var selectedCount = 0;
-            for (var i = allInputs.length - 1; i >= 0; -- i) {
-                selectedCount += allInputs[i].checked;
-            }
-            $('select-count').innerHTML = selectedCount;
-        }
-        function toggleCheckboxes(shouldChecked) {
-            return function() {
-                var children = $prs.children;
-                var allInputs = document.querySelectorAll('#queue > li:not(.hidden) input');
-                for (var i = allInputs.length - 1; i >= 0; -- i) {
-                    allInputs[i].checked = shouldChecked;
-                }
-                updateSelectCount();
-            };
-        };
-        $('select').onclick = toggleCheckboxes(true);
-        $('deselect').onclick = toggleCheckboxes(false);
-        $prs.onclick = function(e) {
-            if (e.target.tagName === 'INPUT') {
-                updateSelectCount();
-            }
-        };
-        var statusOrder = {
-            'Pending': 0,
-            'Approved': 1,
-            'Error': 2,
-            'Failure': 3,
-            'Success': 4,
-            'Reviewing': 5,
-        };
-        var sorters = {
-            priority: function(a, b) {
-                var aa = a.split(/:/);
-                var bb = b.split(/:/);
-                if (aa[0] !== bb[0]) {
-                    return statusOrder[aa[0]] - statusOrder[bb[0]];
-                }
-                if (aa[1] !== bb[1]) {
-                    return bb[1] - aa[1];
-                }
-                return aa[2] - bb[2];
-            },
-            number: function(a, b) {
-                return b - a;
-            },
-        };
-        function doSort() {
-            var children = $prs.children;
-            var array = new Array(children.length);
-            var key = $sort.value;
-            var sorter = sorters[key];
-            for (var i = children.length - 1; i >= 0; -- i) {
-                var li = children[i];
-                array[i] = [li.dataset[key], li];
-            }
-            array.sort(function(a, b) {
-                var aa = a[0];
-                var bb = b[0];
-                if (sorter) {
-                    return sorter(aa, bb);
-                } else {
-                    return aa < bb ? 1 : aa > bb ? -1 : 0;
-                }
-            });
-            for (var i = 0; i < array.length; ++ i) {
-                var li = array[i][1];
-                li.getElementsByClassName('order')[0].innerHTML = '#' + (i + 1);
-                $prs.appendChild(li);
-            }
-        };
-        $sort.onchange = doSort;
-        doSort();
-        $('rollup').onclick = function() {
-            var allInputs = document.querySelectorAll('#queue input');
-            var prs = [];
-            for (var i = allInputs.length - 1; i >= 0; -- i) {
-                var checkbox = allInputs[i];
-                if (checkbox.checked) {
-                    prs.push(allInputs[i].parentNode.parentNode.parentNode.dataset.number|0);
-                }
-            }
-            if (confirm('Create a rollup of ' + prs.length + ' PRs?')) {
-                var state = encodeURIComponent(JSON.stringify({
-                    cmd: 'rollup',
-                    repo_label: '{{ args.homu_url | url_last_path_component }}',
-                    nums: prs,
-                }));
-                open('https://github.com/login/oauth/authorize?client_id={{ args.homu_client_id }}&scope=public_repo,admin:repo_hook&state=' + state);
-            }
-        };
-    </script>
+    <script>{% include "common.js" %}</script>
 </body>
 </html>

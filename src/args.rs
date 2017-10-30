@@ -37,7 +37,7 @@ pub struct Args {
 
     /// Glob pattern to find Tera templates.
     #[structopt(short = "i", long = "templates", help = "Glob pattern to find Tera templates",
-                default_value = "res/*.html")]
+                default_value = "res/*")]
     pub templates: String,
 
     /// HTTP(S) proxy server. If not `None`, all API requests will pass through this URL.

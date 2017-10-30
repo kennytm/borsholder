@@ -19,8 +19,6 @@ pub struct Pr {
     author: String,
     /// When the PR was opened.
     created_at: DateTime<Utc>,
-    /// The last time the PR was updated.
-    updated_at: DateTime<Utc>,
     /// Whether the PR can be merged cleanly.
     mergeable: MergeableState,
     /// PR title.
@@ -31,8 +29,8 @@ pub struct Pr {
     committed_at: DateTime<Utc>,
     /// CI status of the last commit.
     ci_status: Vec<StatusContext>,
-    /// Last comment added to the PR (excluding review comments).
-    last_comment: Option<Comment>,
+    /// Recent actions performed on the PR.
+    timeline: Vec<Value>,
     /// Approval status.
     status: Status,
     /// Whether the approval status applies to a "try" run.
@@ -62,13 +60,12 @@ impl Default for Pr {
         Self {
             author: String::new(),
             created_at: UNIX_EPOCH.into(),
-            updated_at: UNIX_EPOCH.into(),
             mergeable: MergeableState::Unknown,
             title: String::new(),
             labels: Vec::new(),
             committed_at: UNIX_EPOCH.into(),
             ci_status: Vec::new(),
-            last_comment: None,
+            timeline: Vec::new(),
             status: Status::Reviewing,
             is_trying: false,
             reviewer: String::new(),
@@ -76,19 +73,6 @@ impl Default for Pr {
             priority: 0,
         }
     }
-}
-
-/// Information of a PR comment.
-#[derive(Serialize)]
-struct Comment {
-    /// Database ID, used to produce direct link to the comment.
-    id: u64,
-    /// Author of the comment.
-    author: String,
-    /// HTML body of the comment. The HTML should be already sanitized.
-    body: String,
-    /// When the comment was published.
-    published_at: DateTime<Utc>,
 }
 
 lazy_static! {
@@ -117,26 +101,17 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
 
     for mut gh in github_entries {
         let commit = gh.commits.nodes.swap_remove(0).commit;
-        let comment = gh.comments.nodes.into_iter().next();
         prs.insert(
             gh.number,
             Pr {
                 author: gh.author.login,
                 created_at: gh.created_at,
-                updated_at: gh.updated_at,
                 mergeable: gh.mergeable,
                 title: gh.title,
                 labels: gh.labels.nodes,
                 committed_at: commit.committed_date,
                 ci_status: commit.status.map_or_else(Vec::new, |s| s.contexts),
-                last_comment: comment.map(|c| {
-                    Comment {
-                        id: c.database_id,
-                        author: c.author.login,
-                        body: HTML_SANITIZER.clean(&c.body_html).to_string(),
-                        published_at: c.published_at,
-                    }
-                }),
+                timeline: gh.timeline.nodes,
                 ..Pr::default()
             },
         );
@@ -171,18 +146,25 @@ pub fn summarize_prs<'a, I: IntoIterator<Item = &'a Pr>>(prs: I) -> PrStats {
 
 /// Registers some Tera filters, testers and global functions needed for rendering.
 pub fn register_tera_filters(tera: &mut Tera) {
+    if cfg!(debug_assertions) {
+        #[cfg_attr(feature = "cargo-clippy", allow(use_debug))]
+        tera.register_filter(
+            "debug",
+            |input, _| Ok(Value::String(format!("{:#?}", input))),
+        );
+    }
     tera.register_filter("local_datetime", |input, _| {
-        let result = parse::<DateTime<Utc>>(&input)?
+        let result = parse::<DateTime<Utc>>("local_datetime", &input)?
             .with_timezone(&Local)
             .to_rfc2822();
         Ok(Value::String(result))
     });
     tera.register_filter("relative_datetime", |input, _| {
-        let result = HumanTime::from(parse::<DateTime<Utc>>(&input)?).to_string();
-        Ok(Value::String(result))
+        let result = parse::<DateTime<Utc>>("relative_datetime", &input)?;
+        Ok(Value::String(HumanTime::from(result).to_string()))
     });
     tera.register_filter("text_color", |input, _| {
-        let bg_color = input.as_str().ok_or("expecting a string as input")?;
+        let bg_color = try_get_value!("text_color", "value", String, input);
         let red = map_err_to_string(u16::from_str_radix(&bg_color[0..2], 16))?;
         let green = map_err_to_string(u16::from_str_radix(&bg_color[2..4], 16))?;
         let blue = map_err_to_string(u16::from_str_radix(&bg_color[4..6], 16))?;
@@ -191,7 +173,7 @@ pub fn register_tera_filters(tera: &mut Tera) {
         Ok(Value::String(color.to_owned()))
     });
     tera.register_filter("url_last_path_component", |input, _| {
-        let last_component = parse::<Url>(&input)?
+        let last_component = parse::<Url>("url_last_path_component", &input)?
             .path_segments()
             .ok_or("URL has no path")?
             .filter(|s| !s.is_empty())
@@ -199,6 +181,10 @@ pub fn register_tera_filters(tera: &mut Tera) {
             .unwrap_or("")
             .to_owned();
         Ok(Value::String(last_component))
+    });
+    tera.register_filter("sanitize", |input, _| {
+        let unclean = try_get_value!("sanitize", "value", String, input);
+        Ok(Value::String(HTML_SANITIZER.clean(&unclean).to_string()))
     });
     tera.register_tester("starting_with", |value, mut params| {
         let prefix_value = params.swap_remove(0);
@@ -212,11 +198,11 @@ pub fn register_tera_filters(tera: &mut Tera) {
 }
 
 /// Parses a Tera value into a value.
-fn parse<T: FromStr>(input: &Value) -> ::tera::Result<T>
+fn parse<T: FromStr>(filter: &str, input: &Value) -> ::tera::Result<T>
 where
     T::Err: Display,
 {
-    let value = input.as_str().ok_or("expecting a string as input")?.parse();
+    let value = try_get_value!(filter, "value", String, input).parse();
     map_err_to_string(value)
 }
 

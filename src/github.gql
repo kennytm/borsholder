@@ -1,0 +1,268 @@
+stringify![
+
+fragment Commit on Commit {
+  url
+  committer {
+    user {
+      login
+    }
+  }
+  committedDate
+  abbreviatedOid
+  messageHeadline
+  status {
+    contexts {
+      context
+      description
+      targetUrl
+      state
+    }
+  }
+}
+
+fragment Label on Label {
+  name
+  color
+}
+
+fragment ReferencedSubject on ReferencedSubject {
+  __typename
+  ... on Issue {
+    title
+    number
+    url
+  }
+  ... on PullRequest {
+    title
+    number
+    url
+  }
+}
+
+query ($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequests(first: 100, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes {
+        author {
+          login
+        }
+        createdAt
+        mergeable
+        number
+        title
+        labels(first: 10) {
+          nodes {
+            ...Label
+          }
+        }
+        commits(last: 1) {
+          nodes {
+            commit {
+              ...Commit
+            }
+          }
+        }
+        timeline(last: 5) {
+          nodes {
+            __typename
+            ...Commit
+
+            ... on Comment {
+              author {
+                login
+              }
+              bodyHTML
+              createdAt
+              editor {
+                login
+              }
+              lastEditedAt
+            }
+            ... on IssueComment {
+              databaseId
+            }
+            ... on PullRequestReview {
+              url
+              state
+            }
+            ... on PullRequestReviewComment {
+              url
+            }
+
+            ... on AssignedEvent {
+              actor {
+                login
+              }
+              createdAt
+              user {
+                login
+              }
+            }
+            ... on BaseRefForcePushedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on ClosedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on CrossReferencedEvent {
+              actor {
+                login
+              }
+              createdAt
+              source {
+                ...ReferencedSubject
+              }
+              url
+            }
+            ... on DemilestonedEvent {
+              actor {
+                login
+              }
+              createdAt
+              milestoneTitle
+            }
+            ... on HeadRefDeletedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on HeadRefForcePushedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on HeadRefRestoredEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on LabeledEvent {
+              actor {
+                login
+              }
+              createdAt
+              label {
+                ...Label
+              }
+            }
+            ... on LockedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on MergedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on MilestonedEvent {
+              actor {
+                login
+              }
+              createdAt
+              milestoneTitle
+            }
+            ... on ReferencedEvent {
+              actor {
+                login
+              }
+              createdAt
+              commit {
+                ...Commit
+              }
+            }
+            ... on RenamedTitleEvent {
+              actor {
+                login
+              }
+              createdAt
+              previousTitle
+              currentTitle
+            }
+            ... on ReopenedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on ReviewDismissedEvent {
+              actor {
+                login
+              }
+              createdAt
+              message
+              url
+            }
+            ... on ReviewRequestRemovedEvent {
+              actor {
+                login
+              }
+              createdAt
+              subject {
+                login
+              }
+            }
+            ... on ReviewRequestedEvent {
+              actor {
+                login
+              }
+              createdAt
+              subject {
+                login
+              }
+            }
+            ... on SubscribedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on UnassignedEvent {
+              actor {
+                login
+              }
+              createdAt
+              user {
+                login
+              }
+            }
+            ... on UnlabeledEvent {
+              actor {
+                login
+              }
+              createdAt
+              label {
+                ...Label
+              }
+            }
+            ... on UnlockedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+            ... on UnsubscribedEvent {
+              actor {
+                login
+              }
+              createdAt
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+]

@@ -1,0 +1,235 @@
+{% macro rel_time(datetime) %}
+<time datetime="{{ datetime }}" title="{{ datetime | local_datetime }}">{{ datetime | relative_datetime }}</time>
+{% endmacro rel_time %}
+
+{% macro actor(username) %}
+<a class="actor" href="https://github.com/{{ username }}">@{{ username }}</a>
+{% endmacro actor %}
+
+{% macro label(label) %}
+<span class="tag" style="background:#{{ label.color }};color:{{ label.color | text_color }}">{{ label.name }}</span>
+{% endmacro label %}
+
+{% macro ci_status(state, context) %}
+{% if state == "ERROR" %}
+❗️
+{% elif state == "FAILURE" %}
+❌
+{% elif state == "PENDING" %}
+🌕
+{% elif state == "SUCCESS" %}
+✔️
+{% else %}
+❓
+{% endif %}
+{% if context | safe == "continuous-integration/travis-ci/pr" %}
+travis
+{% elif context | safe == "continuous-integration/travis-ci/push" %}
+travis
+{% elif context | safe == "continuous-integration/appveyor/pr" %}
+appveyor
+{% elif context | safe == "continuous-integration/appveyor/branch" %}
+appveyor
+{% else %}
+{{ context }}
+{% endif %}
+{% endmacro ci_status %}
+
+{% macro cis(cis) %}
+{% for ci in cis %}
+<li title="{{ ci.description }}">
+    <a href="{{ ci.targetUrl }}">
+        {{ m::ci_status(state=ci.state, context=ci.context) }}
+        <span class="hidden">{{ ci.description }}</span>
+    </a>
+</li>
+{% endfor %}
+{% endmacro cis %}
+
+{% macro homu_status(status) %}
+{% if status == "Success" %}
+☀️ success
+{% elif status == "Pending" %}
+⏳ pending
+{% elif status == "Approved" %}
+📌 approved
+{% elif status == "Reviewing" %}
+🔹 reviewing
+{% elif status == "Error" %}
+💥 error
+{% elif status == "Failure" %}
+💔 failure
+{% else %}
+❓ {{ status }}
+{% endif %}
+{% endmacro homu_status %}
+
+{% macro event_time(event) %}
+{% if event.createdAt is defined %}
+{{ event.createdAt }}
+{% elif event.committedDate is defined %}
+{{ event.committedDate }}
+{% else %}
+1970-01-01T00:00:00Z
+{% endif %}
+{% endmacro event_time %}
+
+{% macro event_user(event) %}
+{% if event.committer.user.login is defined %}
+{{ event.committer.user.login }}
+{% elif event.author.login is defined %}
+{{ event.author.login }}
+{% elif event.actor.login is defined %}
+{{ event.actor.login }}
+{% endif %}
+{% endmacro event_user %}
+
+{% macro event_url(event, args, number, html) %}
+{% if event.url is defined %}
+<a href="{{ event.url }}">{{ html | safe }}</a>
+{% elif event.databaseId is defined %}
+<a href="https://github.com/{{ args.owner }}/{{ args.repository }}/pull/{{ number }}#issuecomment-{{ event.databaseId }}">{{ html | safe }}</a>
+{% else %}
+{{ html | safe }}
+{% endif %}
+{% endmacro event_url %}
+
+{% macro event_icon(event) %}
+{% if event.__typename == "Commit" %}
+🔸
+{% elif event.__typename == "IssueComment" %}
+💬
+{% elif event.__typename == "PullRequestReview" %}
+    {% if event.state == "APPROVED" %}
+    ✅
+    {% elif event.state == "CHANGES_REQUESTED" %}
+    ⛔️
+    {% elif event.state == "COMMENTED" %}
+    🗯
+    {% elif event.state == "DISMISSED" %}
+    🗑
+    {% elif event.state == "PENDING" %}
+    💭
+    {% endif %}
+{% elif event.__typename == "PullRequestReviewComment" %}
+👀
+{% elif event.__typename == "AssignedEvent" %}
+👤
+{% elif event.__typename == "BaseRefForcePushedEvent" %}
+👊
+{% elif event.__typename == "ClosedEvent" %}
+🚫
+{% elif event.__typename == "CrossReferencedEvent" %}
+🔃
+{% elif event.__typename == "DemilestonedEvent" %}
+🏔
+{% elif event.__typename == "HeadRefDeletedEvent" %}
+❎
+{% elif event.__typename == "HeadRefForcePushedEvent" %}
+👊
+{% elif event.__typename == "HeadRefRestoredEvent" %}
+♻️
+{% elif event.__typename == "LabeledEvent" %}
+➕
+{% elif event.__typename == "LockedEvent" %}
+🔇
+{% elif event.__typename == "MergedEvent" %}
+🎉
+{% elif event.__typename == "MilestonedEvent" %}
+🌋
+{% elif event.__typename == "ReferencedEvent" %}
+🔃
+{% elif event.__typename == "RenamedTitleEvent" %}
+📝
+{% elif event.__typename == "ReopenedEvent" %}
+⭕️
+{% elif event.__typename == "ReviewDismissedEvent" %}
+🗑
+{% elif event.__typename == "ReviewRequestRemovedEvent" %}
+🙅
+{% elif event.__typename == "ReviewRequestedEvent" %}
+❣️
+{% elif event.__typename == "SubscribedEvent" %}
+✉️
+{% elif event.__typename == "UnassignedEvent" %}
+👋
+{% elif event.__typename == "UnlabeledEvent" %}
+➖
+{% elif event.__typename == "UnlockedEvent" %}
+🔊
+{% elif event.__typename == "UnsubscribedEvent" %}
+✂️
+{% else %}
+❓
+{% endif %}
+{% endmacro event_icon %}
+
+{% macro event_verb_phrase(event) %}
+{% if event.__typename == "Commit" %}
+committed <code>{{ event.abbreviatedOid }}</code>
+{% elif event.__typename == "IssueComment" %}
+commented
+{% elif event.__typename == "PullRequestReview" %}
+    {% if event.state == "APPROVED" %}
+    approved
+    {% elif event.state == "CHANGES_REQUESTED" %}
+    requested change
+    {% elif event.state == "COMMENTED" %}
+    reviewed
+    {% elif event.state == "DISMISSED" %}
+    dismissed review
+    {% elif event.state == "PENDING" %}
+    has review pending
+    {% endif %}
+{% elif event.__typename == "PullRequestReviewComment" %}
+replied review
+{% elif event.__typename == "AssignedEvent" %}
+assigned to {{ self::actor(username=event.user.login) }}
+{% elif event.__typename == "BaseRefForcePushedEvent" %}
+force pushed base-ref
+{% elif event.__typename == "ClosedEvent" %}
+closed
+{% elif event.__typename == "CrossReferencedEvent" %}
+referenced from #{{ event.source.number }}
+{% elif event.__typename == "DemilestonedEvent" %}
+removed from milestone {{ event.milestoneTitle }}
+{% elif event.__typename == "HeadRefDeletedEvent" %}
+deleted branch
+{% elif event.__typename == "HeadRefForcePushedEvent" %}
+force pushed head-ref
+{% elif event.__typename == "HeadRefRestoredEvent" %}
+restored branch
+{% elif event.__typename == "LabeledEvent" %}
+labeled {{ self::label(label=event.label) }}
+{% elif event.__typename == "LockedEvent" %}
+locked
+{% elif event.__typename == "MergedEvent" %}
+merged
+{% elif event.__typename == "MilestonedEvent" %}
+added to milestone {{ event.milestoneTitle }}
+{% elif event.__typename == "ReferencedEvent" %}
+referenced from <code>{{ event.commit.abbreviatedOid }}</code>
+{% elif event.__typename == "RenamedTitleEvent" %}
+renamed title
+{% elif event.__typename == "ReopenedEvent" %}
+reopened
+{% elif event.__typename == "ReviewDismissedEvent" %}
+dismissed review
+{% elif event.__typename == "ReviewRequestRemovedEvent" %}
+removed review request
+{% elif event.__typename == "ReviewRequestedEvent" %}
+requested review from {{ self::actor(username=event.subject.login) }}
+{% elif event.__typename == "SubscribedEvent" %}
+subscribed
+{% elif event.__typename == "UnassignedEvent" %}
+unassigned from {{ self::actor(username=event.user.login) }}
+{% elif event.__typename == "UnlabeledEvent" %}
+deleted label {{ self::label(label=event.label) }}
+{% elif event.__typename == "UnlockedEvent" %}
+unlocked
+{% elif event.__typename == "UnsubscribedEvent" %}
+unsubscribed
+{% else %}
+created {{ event.__typename }}
+{% endif %}
+{% endmacro event_verb_phrase %}

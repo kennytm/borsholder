@@ -12,6 +12,7 @@ use reqwest::{Client, Proxy};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::thread::sleep;
 use std::time::Duration;
 use tera::Tera;
 use ttl::Cache;
@@ -26,11 +27,11 @@ pub fn serve(mut args: Args) -> Result<()> {
     if let Some(proxy) = args.proxy.take() {
         builder.proxy(Proxy::all(proxy)?);
     }
-    let client = builder.build()?;
+    let client = builder.timeout(Duration::from_secs(120)).build()?;
     let address = args.address;
 
     let handler = Rc::new(Handler {
-        tera,
+        tera: RefCell::new(tera),
         client,
         args,
         api_cache: RefCell::new(Cache::new()),
@@ -44,7 +45,7 @@ pub fn serve(mut args: Args) -> Result<()> {
 /// Request handler of the borsholder server.
 struct Handler {
     /// The Tera template engine.
-    tera: Tera,
+    tera: RefCell<Tera>,
     /// The reqwest client for making API requests.
     client: Client,
     /// The command line arguments.
@@ -70,9 +71,18 @@ impl Service for Handler {
     type Error = Error;
     type Future = FutureResult<Response, Error>;
 
-    fn call(&self, _: Request) -> Self::Future {
+    fn call(&self, request: Request) -> Self::Future {
+        let uri = request.uri();
+        debug!("Received request to {}", uri);
+
+        let result = if uri.path() == "/reloadTemplates" {
+            self.reload_templates()
+        } else {
+            self.render()
+        };
+
         let mut response = Response::new();
-        match self.render() {
+        match result {
             Ok(body) => {
                 response.set_status(StatusCode::Ok);
                 response.headers_mut().set(ContentType::html());
@@ -83,6 +93,7 @@ impl Service for Handler {
                 response.set_body(e.display().to_string());
             }
         }
+        debug!("Responding with {}", response.status());
         ok(response)
     }
 }
@@ -94,14 +105,48 @@ impl Handler {
     fn render(&self) -> Result<String> {
         let args = &self.args;
         let mut prs_cache = self.api_cache.borrow_mut();
-        let prs = prs_cache.get_or_refresh(Duration::from_secs(5), || -> Result<_> {
-            let github = ::github::query(&self.client, &args.token, &args.owner, &args.repository)?;
+        let prs = prs_cache.get_or_refresh(Duration::from_secs(60), || -> Result<_> {
+            let github = retry(4, Duration::from_secs(10), || {
+                ::github::query(&self.client, &args.token, &args.owner, &args.repository)
+            })?;
             let homu = ::homu::query(&self.client, &self.args.homu_url)?;
             Ok(parse_prs(github, homu))
         })?;
         let stats = summarize_prs(prs.values());
         let data = RenderData { prs, stats, args };
-        let body = self.tera.render("index.html", &data)?;
+        let body = self.tera.borrow().render("index.html", &data)?;
         Ok(body)
     }
+
+    /// Reloads the Tera template.
+    fn reload_templates(&self) -> Result<String> {
+        let mut tera = self.tera.borrow_mut();
+        tera.full_reload()?;
+        Ok("reloaded".to_owned())
+    }
+}
+
+/// Performs an `action` and retry on failure.
+///
+/// If the `action` returns `Ok`, it will be propagated immediately. Otherwise, it will sleep for
+/// `idle_duration` and then performs the `action` again. The error will be returned after `count`
+/// total tries.
+fn retry<T, F>(count: u32, idle_duration: Duration, mut action: F) -> Result<T>
+where
+    F: FnMut() -> Result<T>,
+{
+    let mut last_error = None;
+    for i in 0..count {
+        if i != 0 {
+            if let Some(ref e) = last_error {
+                debug!("retry {}/{}; last attempt failed with {}", i, count, e);
+            }
+            sleep(idle_duration);
+        }
+        match action() {
+            Ok(value) => return Ok(value),
+            Err(e) => last_error = Some(e),
+        }
+    }
+    Err(last_error.expect("count > 0"))
 }

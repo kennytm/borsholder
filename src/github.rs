@@ -14,6 +14,7 @@ pub mod graphql {
     #![cfg_attr(feature = "cargo-clippy", allow(missing_docs_in_private_items))]
 
     use chrono::{DateTime, Utc};
+    use tera::Value;
 
     /// A generic GraphQL connection, which is the same as a vector in our use case.
     #[derive(Deserialize)]
@@ -46,13 +47,12 @@ pub mod graphql {
     pub struct PullRequest {
         pub author: Actor,
         pub created_at: DateTime<Utc>,
-        pub updated_at: DateTime<Utc>,
         pub mergeable: MergeableState,
         pub number: u32,
         pub title: String,
         pub labels: Connection<Label>,
         pub commits: Connection<PullRequestCommit>,
-        pub comments: Connection<IssueComment>,
+        pub timeline: Connection<Value>,
     }
 
     #[derive(Deserialize)]
@@ -94,15 +94,6 @@ pub mod graphql {
         pub description: String,
         pub target_url: String,
         pub state: StatusState,
-    }
-
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct IssueComment {
-        pub database_id: u64,
-        pub author: Actor,
-        #[serde(rename = "bodyHTML")] pub body_html: String,
-        pub published_at: DateTime<Utc>,
     }
 
     #[derive(Deserialize, Serialize, PartialEq, Eq)]
@@ -148,57 +139,7 @@ struct Variables<'variables> {
 const GITHUB_ENDPOINT: &str = "https://api.github.com/graphql";
 
 /// The main GraphQL query.
-const QUERY: &str = r#"
-
-query($owner: String!, $repo: String!) {
-    repository(owner: $owner, name: $repo) {
-        pullRequests(first: 100, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
-            nodes {
-                author {
-                    login
-                }
-                createdAt
-                updatedAt
-                mergeable
-                number
-                title
-                labels(first: 10) {
-                    nodes {
-                        name
-                        color
-                    }
-                }
-                commits(last: 1) {
-                    nodes {
-                        commit {
-                            committedDate
-                            status {
-                                contexts {
-                                    context
-                                    description
-                                    targetUrl
-                                    state
-                                }
-                            }
-                        }
-                    }
-                }
-                comments(last: 1) {
-                    nodes {
-                        databaseId
-                        author {
-                            login
-                        }
-                        bodyHTML
-                        publishedAt
-                    }
-                }
-            }
-        }
-    }
-}
-
-"#;
+const QUERY: &str = include!("github.gql");
 
 /// Obtains the list of open pull requests and associated information from GitHub.
 pub fn query(
