@@ -5,7 +5,7 @@ borsholder
 [![crates.io](https://img.shields.io/crates/v/borsholder.svg)](https://crates.io/crates/borsholder)
 
 **borsholder** is a dashboard for monitoring the [Rust compiler repository]'s pull requests status.
-It is a combination of rust-lang/rust's [Homu queue] with useful information (labels, last comment,
+It is a combination of rust-lang/rust's [Homu queue] with useful information (labels, recent timeline,
 CI status, etc) obtained from the GitHub API.
 
 ![](doc/preview.png)
@@ -29,6 +29,11 @@ Installing
     ```
 
 6. Navigate to <http://127.0.0.1:55727> in your browser.
+
+**Note:** The GitHub query is quite complex, and thus processing can be slow, and may take up to 2
+minutes to get an output. If you see the webpage responds with
+`Error: https://api.github.com/graphql: Server Error: 502 Bad Gateway`, please just wait for a while
+and refresh.
 
 [Rust]: https://rustup.rs/
 [Rust compiler repository]: https://github.com/rust-lang/rust
