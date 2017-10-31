@@ -10,6 +10,8 @@ use reqwest::{Client, Url};
 pub struct Entry {
     /// Pull request number.
     pub number: u32,
+    /// Pull request title.
+    pub title: String,
     /// Approval status.
     pub status: Status,
     /// Whether the approval status applies to a "try" run.
@@ -77,9 +79,11 @@ pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>> {
         let priority = parse_priority(&tds[9]);
         let approver = tds.swap_remove(8);
         let reviewer = tds.swap_remove(7);
+        let title = tds.swap_remove(5);
 
         res.push(Entry {
             number,
+            title,
             status,
             is_trying,
             reviewer,

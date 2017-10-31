@@ -118,7 +118,13 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
     }
 
     for h in homu_entries {
-        let pr = prs.entry(h.number).or_insert_with(Pr::default);
+        let title = h.title;
+        let pr = prs.entry(h.number).or_insert_with(|| {
+            Pr {
+                title,
+                ..Pr::default()
+            }
+        });
         pr.status = h.status;
         pr.is_trying = h.is_trying;
         pr.reviewer = h.reviewer;
