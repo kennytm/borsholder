@@ -9,7 +9,7 @@ var $sort = $('sort');
 $filter.onkeyup = $filter.onsearch = function() {
     var filterValue = $filter.value;
     try {
-        var filter = new RegExp(filterValue, 'i');
+        var filter = new RegExp(filterValue, 'im');
         $filter.setCustomValidity('');
     } catch(e) {
         $filter.setCustomValidity(e);
@@ -19,7 +19,7 @@ $filter.onkeyup = $filter.onsearch = function() {
     var filterCount = 0;
     for (var i = children.length - 1; i >= 0; -- i) {
         var li = children[i];
-        if (filter.test(li.textContent.replace(/\s+/g, ' '))) {
+        if (filter.test(li.dataset.filter)) {
             li.classList.remove('hidden');
             ++ filterCount;
         } else {

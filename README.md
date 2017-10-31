@@ -35,6 +35,29 @@ minutes to get an output. If you see the webpage responds with
 `Error: https://api.github.com/graphql: Server Error: 502 Bad Gateway`, please just wait for a while
 and refresh.
 
+Filter syntax
+-------------
+
+Enter any keyword in the filter text field to show a subset of the PRs. You may also look for a
+specific field like below:
+
+| Field                 | Example               |
+|-----------------------|-----------------------|
+| PR number             | `^number:45678`       |
+| Author                | `^author:niko`        |
+| Title                 | `^title:.*macro`      |
+| Last update time      | `^updated:.*week`     |
+| Has merge conflict?   | `^conflict`           |
+| Labels                | `^labels:.*-review`   |
+| Is rollup?            | `^rollup`             |
+| Priority              | `^p=[1-9]`            |
+| Homu status           | `^approved`           |
+| CI status             | `^travis:failure`     |
+
+List of possible Homu status: Success, Pending, Approved, Reviewing, Error, Failure
+
+List of possible CI status: Success, Pending, Error, Failure, Expected
+
 [Rust]: https://rustup.rs/
 [Rust compiler repository]: https://github.com/rust-lang/rust
 [Homu queue]: https://buildbot2.rust-lang.org/homu/queue/rust

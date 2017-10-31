@@ -41,7 +41,18 @@
                 data-priority="{{ pr.status }}:{{ pr.priority }}:{{ number }}"
                 data-update="{{ update_at }}"
                 data-commit="{{ pr.committed_at }}"
-                data-number="{{ number }}">
+                data-filter="
+number:{{ number }}
+author:{{ pr.author }}
+title:{{ pr.title }}
+updated:{{ update_at | relative_datetime }}
+{{ pr.mergeable }}
+labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
+{% if pr.priority == -1 %}rollup
+{% endif %}p={{ pr.priority }}
+{{ pr.status }}{% if pr.is_trying %} (try){% endif %}
+{% for ci in pr.ci_status %}{{ m::ci_name(context=ci.context) }}:{{ ci.state }}
+{% endfor %}">
             <div class="order">#0</div>
             <div class="number">
                 <label><input type="checkbox">{{ number }}</label>
