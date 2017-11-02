@@ -106,7 +106,9 @@ impl Handler {
         let args = &self.args;
         let mut prs_cache = self.api_cache.borrow_mut();
         let prs = prs_cache.get_or_refresh(Duration::from_secs(60), || -> Result<_> {
-            let github = retry(4, Duration::from_secs(10), || {
+            // TODO: Reduce the number of retries when
+            // https://platform.github.community/t/sporadic-502s-fetching-pr-data/3024 is fixed.
+            let github = retry(6, Duration::from_secs(7), || {
                 ::github::query(&self.client, &args.token, &args.owner, &args.repository)
             })?;
             let homu = ::homu::query(&self.client, &self.args.homu_url)?;
