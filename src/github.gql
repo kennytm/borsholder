@@ -50,6 +50,8 @@ query ($owner: String!, $repo: String!) {
         mergeable
         number
         title
+        additions
+        deletions
         labels(first: 10) {
           nodes {
             ...Label

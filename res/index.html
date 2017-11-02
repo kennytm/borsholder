@@ -65,6 +65,8 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
             <div class="metadata">
                 opened {{ m::rel_time(datetime=pr.created_at) }} by {{ m::actor(username=pr.author) }}
                 ::
+                <span class="additions">+{{ pr.additions }}</span>/<span class="deletions">−{{ pr.deletions }}</span>
+                ::
                 {% if pr.reviewer %}
                     r? {{ m::actor(username=pr.reviewer) }}
                 {% else %}

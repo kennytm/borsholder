@@ -41,6 +41,10 @@ pub struct Pr {
     approver: String,
     /// Priority. Rollups are always assigned a priority of `-1`.
     priority: i32,
+    /// Number of additions to the PR.
+    additions: u32,
+    /// Number of deletions to the PR.
+    deletions: u32,
 }
 
 /// Statistics about all the pull requests in the queue.
@@ -71,6 +75,8 @@ impl Default for Pr {
             reviewer: String::new(),
             approver: String::new(),
             priority: 0,
+            additions: 0,
+            deletions: 0,
         }
     }
 }
@@ -112,6 +118,8 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
                 committed_at: commit.committed_date,
                 ci_status: commit.status.map_or_else(Vec::new, |s| s.contexts),
                 timeline: gh.timeline.nodes,
+                additions: gh.additions,
+                deletions: gh.deletions,
                 ..Pr::default()
             },
         );

@@ -39,6 +39,12 @@ html, body {
 .actor, .comment-metadata > a {
     color: #88a;
 }
+.additions {
+    color: #897;
+}
+.deletions {
+    color: #b88;
+}
 a {
     text-decoration: none;
     color: #006;

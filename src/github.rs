@@ -50,6 +50,8 @@ pub mod graphql {
         pub mergeable: MergeableState,
         pub number: u32,
         pub title: String,
+        pub additions: u32,
+        pub deletions: u32,
         pub labels: Connection<Label>,
         pub commits: Connection<PullRequestCommit>,
         pub timeline: Connection<Value>,
