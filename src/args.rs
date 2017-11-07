@@ -3,6 +3,7 @@
 use reqwest::Url;
 use serde::Serializer;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 /// Stores the command line argument.
 #[derive(Debug, StructOpt, Serialize)]
@@ -35,10 +36,11 @@ pub struct Args {
                 default_value = "127.0.0.1:55727")]
     pub address: SocketAddr,
 
-    /// Glob pattern to find Tera templates.
-    #[structopt(short = "i", long = "templates", help = "Glob pattern to find Tera templates",
-                default_value = "res/*")]
-    pub templates: String,
+    /// Directory to find Tera templates and static resources
+    #[structopt(short = "i", long = "templates", help = "Directory of the templates",
+                default_value = "res", parse(from_os_str))]
+    #[serde(skip_serializing)]
+    pub templates: PathBuf,
 
     /// HTTP(S) proxy server. If not `None`, all API requests will pass through this URL.
     #[structopt(short = "p", long = "proxy", help = "HTTP(S) proxy server")]

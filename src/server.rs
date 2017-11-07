@@ -5,7 +5,8 @@ use error_chain::ChainedError;
 use errors::Result;
 use futures::future::{ok, FutureResult};
 use hyper::{Error, StatusCode};
-use hyper::header::ContentType;
+use hyper::header::{CacheControl, ContentType};
+use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats};
 use reqwest::{Client, Proxy};
@@ -14,14 +15,21 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::thread::sleep;
 use std::time::Duration;
+use std::fs::File;
+use std::io::Read;
+use std::ffi::OsStr;
 use tera::Tera;
 use ttl::Cache;
+use mime::{Mime, TEXT_CSS, TEXT_JAVASCRIPT};
+use regex::bytes::Regex;
 
 /// Serves the borsholder web page configured according to `args`.
 ///
 /// This method will not return until the server is shutdown.
 pub fn serve(mut args: Args) -> Result<()> {
-    let mut tera = Tera::new(&args.templates)?;
+    let tera_pattern_os = args.templates.join("*.html").into_os_string();
+    let tera_pattern = tera_pattern_os.to_string_lossy();
+    let mut tera = Tera::new(&tera_pattern)?;
     register_tera_filters(&mut tera);
     let mut builder = Client::builder();
     if let Some(proxy) = args.proxy.take() {
@@ -75,30 +83,72 @@ impl Service for Handler {
         let uri = request.uri();
         debug!("Received request to {}", uri);
 
-        let result = if uri.path() == "/reloadTemplates" {
-            self.reload_templates()
-        } else {
-            self.render()
-        };
-
         let mut response = Response::new();
-        match result {
-            Ok(body) => {
-                response.set_status(StatusCode::Ok);
-                response.headers_mut().set(ContentType::html());
-                response.set_body(body);
-            }
-            Err(e) => {
-                response.set_status(StatusCode::InternalServerError);
-                response.set_body(e.display().to_string());
-            }
+        if let Err(e) = self.serve(uri.path(), &mut response) {
+            response.set_status(StatusCode::InternalServerError);
+            response.headers_mut().set(ContentType::plaintext());
+            response.set_body(e.display().to_string());
         }
+
         debug!("Responding with {}", response.status());
         ok(response)
     }
 }
 
+lazy_static! {
+    static ref SAFE_PATH_RE: Regex = Regex::new(r"^/static/[^\\/]+$").expect("safe path regex");
+    static ref KNOWN_CONTENT_TYPES: HashMap<&'static str, Mime> = hashmap![
+        "css" => TEXT_CSS,
+        "js" => TEXT_JAVASCRIPT,
+    ];
+}
+
 impl Handler {
+    /// Serves a response from the URL.
+    fn serve(&self, path: &str, response: &mut Response) -> Result<()> {
+        match path {
+            "/" => {
+                let body = self.render()?;
+                response.set_status(StatusCode::Ok);
+                response.headers_mut().set(ContentType::html());
+                response.set_body(body);
+            }
+            "/reloadTemplates" => {
+                self.reload_templates()?;
+                response.set_status(StatusCode::Ok);
+                response.headers_mut().set(ContentType::plaintext());
+                response.set_body("reloaded");
+            }
+            _ => {
+                response.set_status(StatusCode::NotFound);
+                if SAFE_PATH_RE.is_match(path.as_bytes()) {
+                    let path = self.args.templates.join(&path[1..]);
+                    if path.exists() {
+                        let mime = path.extension()
+                            .and_then(OsStr::to_str)
+                            .and_then(|ext| KNOWN_CONTENT_TYPES.get(ext));
+
+                        let mut file = File::open(path)?;
+                        let mut body = Vec::new();
+                        file.read_to_end(&mut body)?;
+                        drop(file);
+
+                        response.set_status(StatusCode::Ok);
+                        {
+                            let headers = response.headers_mut();
+                            headers.set(CacheControl(vec![Public, MaxAge(31_536_000)]));
+                            if let Some(mime) = mime {
+                                headers.set(ContentType(mime.clone()));
+                            }
+                        }
+                        response.set_body(body);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Renders the web page.
     ///
     /// This method will *synchronously* download PR information from GitHub and Homu.
@@ -121,10 +171,10 @@ impl Handler {
     }
 
     /// Reloads the Tera template.
-    fn reload_templates(&self) -> Result<String> {
+    fn reload_templates(&self) -> Result<()> {
         let mut tera = self.tera.borrow_mut();
         tera.full_reload()?;
-        Ok("reloaded".to_owned())
+        Ok(())
     }
 }
 

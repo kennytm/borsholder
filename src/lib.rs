@@ -30,6 +30,9 @@ extern crate log;
 extern crate maplit;
 #[macro_use]
 extern crate markup5ever;
+extern crate mime;
+extern crate regex;
+extern crate relative_path;
 extern crate reqwest;
 extern crate serde;
 #[macro_use]
