@@ -1,5 +1,6 @@
 //! Local server of borsholder.
 
+use antidote::Mutex;
 use args::Args;
 use error_chain::ChainedError;
 use errors::Result;
@@ -8,20 +9,21 @@ use hyper::{Error, StatusCode};
 use hyper::header::{CacheControl, ContentType};
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
+use mime::{Mime, TEXT_CSS, TEXT_JAVASCRIPT};
+use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats};
 use reqwest::{Client, Proxy};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
-use std::thread::sleep;
-use std::time::Duration;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
-use std::ffi::OsStr;
+use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::{self, sleep};
+use std::time::Duration;
 use tera::Tera;
-use ttl::Cache;
-use mime::{Mime, TEXT_CSS, TEXT_JAVASCRIPT};
-use regex::bytes::Regex;
 
 /// Serves the borsholder web page configured according to `args`.
 ///
@@ -37,29 +39,56 @@ pub fn serve(mut args: Args) -> Result<()> {
     }
     let client = builder.timeout(Duration::from_secs(120)).build()?;
     let address = args.address;
+    let is_server_dead = AtomicBool::new(false);
+
+    let context = Arc::new(Context {
+        client,
+        args,
+        is_server_dead,
+    });
+    let server_context = Arc::clone(&context);
+    let github_context = Arc::clone(&context);
+    let homu_context = Arc::clone(&context);
+
+    let github_thread = thread::Builder::new()
+        .name("GitHub".to_owned())
+        .spawn(move || load_from_github(&github_context))?;
+    let homu_thread = thread::Builder::new()
+        .name("Homu".to_owned())
+        .spawn(move || load_from_homu(&homu_context))?;
 
     let handler = Rc::new(Handler {
         tera: RefCell::new(tera),
-        client,
-        args,
-        api_cache: RefCell::new(Cache::new()),
+        context: server_context,
     });
     let server = Http::new().bind(&address, move || Ok(Rc::clone(&handler)))?;
     server.run()?;
 
+    context.is_server_dead.store(true, Ordering::Relaxed);
+
+    github_thread.join().expect("GitHub thread is complete");
+    homu_thread.join().expect("Homu thread is complete");
+
     Ok(())
+}
+
+/// Shared context between the web server and the worker threads.
+struct Context {
+    /// The reqwest client for making API requests.
+    client: Client,
+    /// The command line arguments.
+    args: Args,
+    /// Whether the server is still running. When this value is false, all
+    /// worker threads should stop as soon as possible.
+    is_server_dead: AtomicBool,
 }
 
 /// Request handler of the borsholder server.
 struct Handler {
     /// The Tera template engine.
     tera: RefCell<Tera>,
-    /// The reqwest client for making API requests.
-    client: Client,
-    /// The command line arguments.
-    args: Args,
-    /// The cached API response.
-    api_cache: RefCell<Cache<HashMap<u32, Pr>>>,
+    /// Shared context with the worker threads.
+    context: Arc<Context>,
 }
 
 /// Packaged JSON-like object to be sent to Tera for rendering.
@@ -101,6 +130,9 @@ lazy_static! {
         "css" => TEXT_CSS,
         "js" => TEXT_JAVASCRIPT,
     ];
+
+    static ref GITHUB_ENTRIES: Mutex<Vec<::github::graphql::PullRequest>> = Mutex::new(Vec::new());
+    static ref HOMU_ENTRIES: Mutex<Vec<::homu::Entry>> = Mutex::new(Vec::new());
 }
 
 impl Handler {
@@ -122,7 +154,7 @@ impl Handler {
             _ => {
                 response.set_status(StatusCode::NotFound);
                 if SAFE_PATH_RE.is_match(path.as_bytes()) {
-                    let path = self.args.templates.join(&path[1..]);
+                    let path = self.context.args.templates.join(&path[1..]);
                     if path.exists() {
                         let mime = path.extension()
                             .and_then(OsStr::to_str)
@@ -153,19 +185,18 @@ impl Handler {
     ///
     /// This method will *synchronously* download PR information from GitHub and Homu.
     fn render(&self) -> Result<String> {
-        let args = &self.args;
-        let mut prs_cache = self.api_cache.borrow_mut();
-        let prs = prs_cache.get_or_refresh(Duration::from_secs(60), || -> Result<_> {
-            // TODO: Reduce the number of retries when
-            // https://platform.github.community/t/sporadic-502s-fetching-pr-data/3024 is fixed.
-            let github = retry(6, Duration::from_secs(7), || {
-                ::github::query(&self.client, &args.token, &args.owner, &args.repository)
-            })?;
-            let homu = ::homu::query(&self.client, &self.args.homu_url)?;
-            Ok(parse_prs(github, homu))
-        })?;
+        let args = &self.context.args;
+
+        let github_prs = { GITHUB_ENTRIES.lock().clone() };
+        let homu_prs = { HOMU_ENTRIES.lock().clone() };
+
+        let prs = parse_prs(github_prs, homu_prs);
         let stats = summarize_prs(prs.values());
-        let data = RenderData { prs, stats, args };
+        let data = RenderData {
+            prs: &prs,
+            stats,
+            args,
+        };
         let body = self.tera.borrow().render("index.html", &data)?;
         Ok(body)
     }
@@ -178,27 +209,46 @@ impl Handler {
     }
 }
 
-/// Performs an `action` and retry on failure.
+/// Common routine for a background worker thread.
 ///
-/// If the `action` returns `Ok`, it will be propagated immediately. Otherwise, it will sleep for
-/// `idle_duration` and then performs the `action` again. The error will be returned after `count`
-/// total tries.
-fn retry<T, F>(count: u32, idle_duration: Duration, mut action: F) -> Result<T>
-where
-    F: FnMut() -> Result<T>,
-{
-    let mut last_error = None;
-    for i in 0..count {
-        if i != 0 {
-            if let Some(ref e) = last_error {
-                debug!("retry {}/{}; last attempt failed with {}", i, count, e);
+/// The `query` function will be executed periodically. On success, it will
+/// write the result into the `output` mutex.
+fn worker_thread<T, F: FnMut() -> Result<T>>(context: &Context, output: &Mutex<T>, mut query: F) {
+    while !context.is_server_dead.load(Ordering::Relaxed) {
+        match query() {
+            Ok(entries) => {
+                {
+                    *output.lock() = entries;
+                }
+                sleep(Duration::from_secs(300));
             }
-            sleep(idle_duration);
-        }
-        match action() {
-            Ok(value) => return Ok(value),
-            Err(e) => last_error = Some(e),
+            Err(e) => {
+                debug!(
+                    "Query for {} failed: {}",
+                    thread::current().name().unwrap_or("<unnamed>"),
+                    e
+                );
+                sleep(Duration::from_secs(7));
+            }
         }
     }
-    Err(last_error.expect("count > 0"))
+}
+
+/// Worker thread for loading data from GitHub.
+fn load_from_github(context: &Context) {
+    worker_thread(context, &GITHUB_ENTRIES, || {
+        ::github::query(
+            &context.client,
+            &context.args.token,
+            &context.args.owner,
+            &context.args.repository,
+        )
+    });
+}
+
+/// Worker thread for loading data from Homu.
+fn load_from_homu(context: &Context) {
+    worker_thread(context, &HOMU_ENTRIES, || {
+        ::homu::query(&context.client, &context.args.homu_url)
+    });
 }

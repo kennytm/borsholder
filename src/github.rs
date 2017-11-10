@@ -17,32 +17,32 @@ pub mod graphql {
     use tera::Value;
 
     /// A generic GraphQL connection, which is the same as a vector in our use case.
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct Connection<T> {
         /// List of nodes in this connection.
         pub nodes: Vec<T>,
     }
 
     /// The reply of a GraphQL query.
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct Reply {
         pub data: Data,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct Data {
         pub repository: Repository,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct Repository {
         pub pull_requests: Connection<PullRequest>,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct PullRequest {
         pub author: Actor,
@@ -57,39 +57,39 @@ pub mod graphql {
         pub timeline: Connection<Value>,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct Actor {
         pub login: String,
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct Label {
         pub name: String,
         pub color: String,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct PullRequestCommit {
         pub commit: Commit,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct Commit {
         pub committed_date: DateTime<Utc>,
         pub status: Option<Status>,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct Status {
         pub contexts: Vec<StatusContext>,
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct StatusContext {
         pub context: String,
@@ -98,7 +98,7 @@ pub mod graphql {
         pub state: StatusState,
     }
 
-    #[derive(Deserialize, Serialize, PartialEq, Eq)]
+    #[derive(Deserialize, Serialize, PartialEq, Eq, Clone)]
     #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
     pub enum MergeableState {
         Unknown,
@@ -106,7 +106,7 @@ pub mod graphql {
         Conflicting,
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Deserialize, Serialize, Clone)]
     #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
     pub enum StatusState {
         Expected,

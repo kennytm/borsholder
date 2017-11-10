@@ -14,6 +14,7 @@
 #![cfg_attr(feature = "cargo-clippy", warn(warnings, clippy_pedantic))]
 
 extern crate ammonia;
+extern crate antidote;
 extern crate chrono;
 extern crate chrono_humanize;
 extern crate env_logger;
@@ -49,7 +50,6 @@ mod github;
 mod homu;
 mod render;
 mod server;
-mod ttl;
 
 use args::Args;
 use chrono::Local;

@@ -16,6 +16,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 ammonia = "1.0.0-rc3"
+antidote = "1"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-humanize = "0.0.10"
 env_logger = "0.4"
