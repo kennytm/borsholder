@@ -115,10 +115,10 @@ $('rollup').onclick = function() {
     if (confirm('Create a rollup of ' + prs.length + ' PRs?')) {
         var state = encodeURIComponent(JSON.stringify({
             cmd: 'rollup',
-            repo_label: '{{ args.homu_url | url_last_path_component }}',
+            repo_label: HOMU_URL,
             nums: prs,
         }));
-        open('https://github.com/login/oauth/authorize?client_id={{ args.homu_client_id }}&scope=public_repo,admin:repo_hook&state=' + state);
+        open('https://github.com/login/oauth/authorize?client_id=' + CLIENT_ID + '&scope=public_repo,admin:repo_hook&state=' + state);
     }
 };
 
