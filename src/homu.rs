@@ -7,7 +7,6 @@ use markup5ever::ExpandedName;
 use reqwest::{Client, Url};
 
 /// An entry in the Homu queue.
-#[derive(Clone)]
 pub struct Entry {
     /// Pull request number.
     pub number: u32,
@@ -26,7 +25,7 @@ pub struct Entry {
 }
 
 /// The approval status of a pull request in the Homu queue.
-#[derive(Serialize, PartialEq, Eq, Clone)]
+#[derive(Serialize, PartialEq, Eq, Clone, Copy)]
 pub enum Status {
     /// CI reported success, waiting for reviewer's further action.
     Success,

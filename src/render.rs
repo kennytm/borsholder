@@ -13,31 +13,31 @@ use tera::{Tera, Value};
 
 /// Information of a pull request.
 #[derive(Serialize)]
-pub struct Pr {
+pub struct Pr<'a> {
     /// The author of the PR (GitHub username).
-    author: String,
+    author: &'a str,
     /// When the PR was opened.
     created_at: DateTime<Utc>,
     /// Whether the PR can be merged cleanly.
     mergeable: MergeableState,
     /// PR title.
-    title: String,
+    title: &'a str,
     /// Labels applied to the PR.
-    labels: Vec<Label>,
+    labels: &'a [Label],
     /// When the last commit of this PR was committed.
     committed_at: DateTime<Utc>,
     /// CI status of the last commit.
-    ci_status: Vec<StatusContext>,
+    ci_status: &'a [StatusContext],
     /// Recent actions performed on the PR.
-    timeline: Vec<Value>,
+    timeline: &'a [Value],
     /// Approval status.
     status: Status,
     /// Whether the approval status applies to a "try" run.
     is_trying: bool,
     /// Assigned reviewer.
-    reviewer: String,
+    reviewer: &'a str,
     /// Person who approved the PR.
-    approver: String,
+    approver: &'a str,
     /// Priority. Rollups are always assigned a priority of `-1`.
     priority: i32,
     /// Number of additions to the PR.
@@ -58,21 +58,21 @@ pub struct PrStats {
 }
 
 // Cannot derive default since it is not implemented for DateTime.
-impl Default for Pr {
+impl<'a> Default for Pr<'a> {
     fn default() -> Self {
         Self {
-            author: String::new(),
+            author: "",
             created_at: UNIX_EPOCH.into(),
             mergeable: MergeableState::Unknown,
-            title: String::new(),
-            labels: Vec::new(),
+            title: "",
+            labels: &[],
             committed_at: UNIX_EPOCH.into(),
-            ci_status: Vec::new(),
-            timeline: Vec::new(),
+            ci_status: &[],
+            timeline: &[],
             status: Status::Reviewing,
             is_trying: false,
-            reviewer: String::new(),
-            approver: String::new(),
+            reviewer: "",
+            approver: "",
             priority: 0,
             additions: 0,
             deletions: 0,
@@ -101,22 +101,25 @@ lazy_static! {
 }
 
 /// Combines information from GitHub and Homu to get a list of pull request information.
-pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> HashMap<u32, Pr> {
+pub fn parse_prs<'a>(
+    github_entries: &'a [PullRequest],
+    homu_entries: &'a [Entry],
+) -> HashMap<u32, Pr<'a>> {
     let mut prs = HashMap::new();
 
-    for mut gh in github_entries {
-        let commit = gh.commits.nodes.swap_remove(0).commit;
+    for gh in github_entries {
+        let commit = &gh.commits.nodes[0].commit;
         prs.insert(
             gh.number,
             Pr {
-                author: gh.author.login,
+                author: &gh.author.login,
                 created_at: gh.created_at,
                 mergeable: gh.mergeable,
-                title: gh.title,
-                labels: gh.labels.nodes,
+                title: &gh.title,
+                labels: &gh.labels.nodes,
                 committed_at: commit.committed_date,
-                ci_status: commit.status.map_or_else(Vec::new, |s| s.contexts),
-                timeline: gh.timeline.nodes,
+                ci_status: commit.status.as_ref().map_or(&[], |s| &s.contexts),
+                timeline: &gh.timeline.nodes,
                 additions: gh.additions,
                 deletions: gh.deletions,
                 ..Pr::default()
@@ -125,17 +128,16 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
     }
 
     for h in homu_entries {
-        let title = h.title;
         let pr = prs.entry(h.number).or_insert_with(|| {
             Pr {
-                title,
+                title: &h.title,
                 ..Pr::default()
             }
         });
         pr.status = h.status;
         pr.is_trying = h.is_trying;
-        pr.reviewer = h.reviewer;
-        pr.approver = h.approver;
+        pr.reviewer = &h.reviewer;
+        pr.approver = &h.approver;
         pr.priority = h.priority;
     }
 
@@ -143,7 +145,7 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
 }
 
 /// Reads in an iterator of PR references, and produces statistics about them.
-pub fn summarize_prs<'a, I: IntoIterator<Item = &'a Pr>>(prs: I) -> PrStats {
+pub fn summarize_prs<'b, 'a: 'b, I: IntoIterator<Item = &'b Pr<'a>>>(prs: I) -> PrStats {
     let mut stats = PrStats::default();
     for pr in prs {
         stats.count += 1;

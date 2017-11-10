@@ -1,7 +1,8 @@
 //! Local server of borsholder.
 
-use antidote::Mutex;
+use antidote::{Condvar, Mutex, MutexGuard};
 use args::Args;
+use chrono::{DateTime, Utc};
 use error_chain::ChainedError;
 use errors::Result;
 use futures::future::{ok, FutureResult};
@@ -20,9 +21,8 @@ use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread::{self, sleep};
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, UNIX_EPOCH};
 use tera::Tera;
 
 /// Serves the borsholder web page configured according to `args`.
@@ -39,12 +39,14 @@ pub fn serve(mut args: Args) -> Result<()> {
     }
     let client = builder.timeout(Duration::from_secs(120)).build()?;
     let address = args.address;
-    let is_server_dead = AtomicBool::new(false);
+    let is_server_dead = Mutex::new(false);
+    let is_server_dead_condition = Condvar::new();
 
     let context = Arc::new(Context {
         client,
         args,
         is_server_dead,
+        is_server_dead_condition,
     });
     let server_context = Arc::clone(&context);
     let github_context = Arc::clone(&context);
@@ -64,7 +66,10 @@ pub fn serve(mut args: Args) -> Result<()> {
     let server = Http::new().bind(&address, move || Ok(Rc::clone(&handler)))?;
     server.run()?;
 
-    context.is_server_dead.store(true, Ordering::Relaxed);
+    {
+        *context.is_server_dead.lock() = true;
+        context.is_server_dead_condition.notify_all();
+    }
 
     github_thread.join().expect("GitHub thread is complete");
     homu_thread.join().expect("Homu thread is complete");
@@ -80,7 +85,9 @@ struct Context {
     args: Args,
     /// Whether the server is still running. When this value is false, all
     /// worker threads should stop as soon as possible.
-    is_server_dead: AtomicBool,
+    is_server_dead: Mutex<bool>,
+    /// The condition variable operating on the `is_server_dead` mutex.
+    is_server_dead_condition: Condvar,
 }
 
 /// Request handler of the borsholder server.
@@ -95,11 +102,15 @@ struct Handler {
 #[derive(Serialize)]
 struct RenderData<'a> {
     /// The list of PRs.
-    prs: &'a HashMap<u32, Pr>,
+    prs: &'a HashMap<u32, Pr<'a>>,
     /// PR statistics.
     stats: PrStats,
     /// The command line arguments.
     args: &'a Args,
+    /// Last update time for GitHub.
+    github_last_update: DateTime<Utc>,
+    /// Last update time for Homu.
+    homu_last_update: DateTime<Utc>,
 }
 
 impl Service for Handler {
@@ -124,15 +135,42 @@ impl Service for Handler {
     }
 }
 
+/// Represent a cached value that is shared across threads, containing the last
+/// update time.
+struct Cache<T>(Mutex<(T, DateTime<Utc>)>);
+
+impl<T: Default> Default for Cache<T> {
+    fn default() -> Self {
+        Cache(Mutex::new((T::default(), UNIX_EPOCH.into())))
+    }
+}
+
+impl<T> Cache<T> {
+    /// Sets a value to the cache.
+    fn set(&self, value: T) {
+        let now = Utc::now();
+        *self.0.lock() = (value, now);
+    }
+
+    /// Gets the value and last update time from the cache.
+    fn lock(&self) -> MutexGuard<(T, DateTime<Utc>)> {
+        self.0.lock()
+    }
+}
+
 lazy_static! {
+    /// The regex which represents path can be used for static resource.
     static ref SAFE_PATH_RE: Regex = Regex::new(r"^/static/[^\\/]+$").expect("safe path regex");
+    /// A hash map of file extension to their media types.
     static ref KNOWN_CONTENT_TYPES: HashMap<&'static str, Mime> = hashmap![
         "css" => TEXT_CSS,
         "js" => TEXT_JAVASCRIPT,
     ];
 
-    static ref GITHUB_ENTRIES: Mutex<Vec<::github::graphql::PullRequest>> = Mutex::new(Vec::new());
-    static ref HOMU_ENTRIES: Mutex<Vec<::homu::Entry>> = Mutex::new(Vec::new());
+    /// The cached GitHub API request result.
+    static ref GITHUB_ENTRIES: Cache<Vec<::github::graphql::PullRequest>> = Cache::default();
+    /// The cached Homu queue request result.
+    static ref HOMU_ENTRIES: Cache<Vec<::homu::Entry>> = Cache::default();
 }
 
 impl Handler {
@@ -150,6 +188,12 @@ impl Handler {
                 response.set_status(StatusCode::Ok);
                 response.headers_mut().set(ContentType::plaintext());
                 response.set_body("reloaded");
+            }
+            "/sync" => {
+                self.context.is_server_dead_condition.notify_all();
+                response.set_status(StatusCode::Ok);
+                response.headers_mut().set(ContentType::plaintext());
+                response.set_body("synchronization request sent, go back and refresh.");
             }
             _ => {
                 response.set_status(StatusCode::NotFound);
@@ -187,16 +231,19 @@ impl Handler {
     fn render(&self) -> Result<String> {
         let args = &self.context.args;
 
-        let github_prs = { GITHUB_ENTRIES.lock().clone() };
-        let homu_prs = { HOMU_ENTRIES.lock().clone() };
+        let github_guard = GITHUB_ENTRIES.lock();
+        let homu_guard = HOMU_ENTRIES.lock();
 
-        let prs = parse_prs(github_prs, homu_prs);
+        let prs = parse_prs(&github_guard.0, &homu_guard.0);
         let stats = summarize_prs(prs.values());
         let data = RenderData {
             prs: &prs,
             stats,
             args,
+            github_last_update: github_guard.1,
+            homu_last_update: homu_guard.1,
         };
+
         let body = self.tera.borrow().render("index.html", &data)?;
         Ok(body)
     }
@@ -212,15 +259,13 @@ impl Handler {
 /// Common routine for a background worker thread.
 ///
 /// The `query` function will be executed periodically. On success, it will
-/// write the result into the `output` mutex.
-fn worker_thread<T, F: FnMut() -> Result<T>>(context: &Context, output: &Mutex<T>, mut query: F) {
-    while !context.is_server_dead.load(Ordering::Relaxed) {
-        match query() {
+/// write the result into the `output` cache.
+fn worker_thread<T, F: FnMut() -> Result<T>>(context: &Context, output: &Cache<T>, mut query: F) {
+    loop {
+        let sleep_duration = match query() {
             Ok(entries) => {
-                {
-                    *output.lock() = entries;
-                }
-                sleep(Duration::from_secs(300));
+                output.set(entries);
+                context.args.refresh_interval
             }
             Err(e) => {
                 debug!(
@@ -228,9 +273,17 @@ fn worker_thread<T, F: FnMut() -> Result<T>>(context: &Context, output: &Mutex<T
                     thread::current().name().unwrap_or("<unnamed>"),
                     e
                 );
-                sleep(Duration::from_secs(7));
+                context.args.retry_interval
             }
+        };
+
+        let guard = context.is_server_dead.lock();
+        if *guard {
+            break;
         }
+        context
+            .is_server_dead_condition
+            .wait_timeout(guard, sleep_duration);
     }
 }
 
