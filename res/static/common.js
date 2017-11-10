@@ -130,6 +130,52 @@ function adjustScrollPosition(e) {
     };
 }
 
+function recomputeRelativeTime() {
+    var timeElems = document.getElementsByTagName('TIME');
+    var now = Date.now();
+    for (var i = timeElems.length - 1; i >= 0; -- i) {
+        var elem = timeElems[i];
+        var text;
+        var dt = Date.parse(elem.getAttribute('datetime'));
+        if (dt > 0) {
+            var diff = ((now - dt) / 60000)|0;
+            if (diff < 1) {
+                text = '1 minute';
+            } else if (diff < 60) {
+                text = diff + ' minutes';
+            } else if (diff < 3*60) {
+                var hours = (diff / 60)|0;
+                var minutes = diff % 60;
+                text = hours + ' hour';
+                if (hours > 1) {
+                    text += 's';
+                }
+                if (minutes > 0) {
+                    text += ' ' + minutes + ' minute';
+                    if (minutes > 1) {
+                        text += 's';
+                    }
+                }
+            } else if (diff < 24*60) {
+                var hours = (diff / 60)|0;
+                text = hours + ' hours';
+            } else {
+                var days = (diff / (24*60))|0;
+                text = days + ' day';
+                if (days > 1) {
+                    text += 's';
+                }
+            }
+            text += ' ago';
+        } else {
+            text = 'at unknown time'
+        }
+        elem.innerHTML = text;
+    }
+}
+setInterval(recomputeRelativeTime, 30000);
+recomputeRelativeTime();
+
 var commentMetadata = document.getElementsByClassName('comment-metadata');
 for (var i = commentMetadata.length - 1; i >= 0; -- i) {
     var e = commentMetadata[i];

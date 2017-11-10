@@ -46,7 +46,6 @@ specific field like below:
 | PR number             | `^number:45678`       |
 | Author                | `^author:niko`        |
 | Title                 | `^title:.*macro`      |
-| Last update time      | `^updated:.*week`     |
 | Has merge conflict?   | `^conflict`           |
 | Labels                | `^labels:.*-review`   |
 | Is rollup?            | `^rollup`             |

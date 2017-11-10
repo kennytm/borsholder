@@ -1,7 +1,6 @@
 //! Utilities for rendering the page via Tera.
 
 use ammonia::Builder;
-use chrono_humanize::HumanTime;
 use chrono::{DateTime, Local, Utc};
 use github::graphql::{Label, MergeableState, PullRequest, StatusContext};
 use homu::{Entry, Status};
@@ -172,10 +171,6 @@ pub fn register_tera_filters(tera: &mut Tera) {
             .with_timezone(&Local)
             .to_rfc2822();
         Ok(Value::String(result))
-    });
-    tera.register_filter("relative_datetime", |input, _| {
-        let result = parse::<DateTime<Utc>>("relative_datetime", &input)?;
-        Ok(Value::String(HumanTime::from(result).to_string()))
     });
     tera.register_filter("text_color", |input, _| {
         let bg_color = try_get_value!("text_color", "value", String, input);

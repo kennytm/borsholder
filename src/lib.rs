@@ -16,7 +16,6 @@
 extern crate ammonia;
 extern crate antidote;
 extern crate chrono;
-extern crate chrono_humanize;
 extern crate env_logger;
 #[macro_use]
 extern crate error_chain;
@@ -33,7 +32,6 @@ extern crate maplit;
 extern crate markup5ever;
 extern crate mime;
 extern crate regex;
-extern crate relative_path;
 extern crate reqwest;
 extern crate serde;
 #[macro_use]

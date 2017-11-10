@@ -1,5 +1,5 @@
 {% macro rel_time(datetime) %}
-<time datetime="{{ datetime }}" title="{{ datetime | local_datetime }}">{{ datetime | relative_datetime }}</time>
+<time datetime="{{ datetime }}" title="{{ datetime | local_datetime }}">{{ datetime }}</time>
 {% endmacro rel_time %}
 
 {% macro actor(username) %}
