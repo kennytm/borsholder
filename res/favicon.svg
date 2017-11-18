@@ -1,0 +1,17 @@
+<svg width="360" height="360" id="svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- border effect ref: https://stackoverflow.com/a/46123184 -->
+    <defs>
+        <filter id="white-border">
+            <feMorphology in="SourceAlpha" result="dilated" operator="dilate" radius="3"/>
+            <feColorMatrix in="dilated" result="whitened" type="matrix" values="-1 0 0 1 0, 0 -1 0 1 0, 0 0 -1 1 0, 0 0 0 0.4 0"/>
+            <feMerge>
+                <feMergeNode in="whitened"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+    <image x="0" y="0" width="360" height="360"
+        xlink:href="https://upload.wikimedia.org/wikipedia/commons/f/f6/HAL9000.svg"/>
+    <image x="70" y="72.5" width="220" height="220" filter="url(#white-border)"
+        xlink:href="https://upload.wikimedia.org/wikipedia/commons/d/d5/Rust_programming_language_black_logo.svg"/>
+</svg>

@@ -9,7 +9,7 @@ use hyper::{self, StatusCode};
 use hyper::header::{CacheControl, ContentType};
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
-use mime::{Mime, TEXT_CSS, TEXT_JAVASCRIPT};
+use mime::{Mime, TEXT_CSS, TEXT_JAVASCRIPT, IMAGE_PNG};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
 use reqwest::{Client, Proxy};
@@ -164,6 +164,7 @@ lazy_static! {
     static ref KNOWN_CONTENT_TYPES: HashMap<&'static str, Mime> = hashmap![
         "css" => TEXT_CSS,
         "js" => TEXT_JAVASCRIPT,
+        "png" => IMAGE_PNG,
     ];
 
     /// The cached GitHub API request result.
