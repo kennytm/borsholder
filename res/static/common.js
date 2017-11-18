@@ -49,8 +49,20 @@ function toggleCheckboxes(shouldChecked) {
 $('select').onclick = toggleCheckboxes(true);
 $('deselect').onclick = toggleCheckboxes(false);
 $prs.onclick = function(e) {
-    if (e.target.tagName === 'INPUT') {
+    var target = e.target;
+    if (target.tagName === 'INPUT') {
         updateSelectCount();
+    }
+
+
+    if (HAS_ACTIVE_COMMENTS) {
+        while (target) {
+            if (target.className === 'comment') {
+                return;
+            }
+            target = target.parentNode;
+        }
+        hideActiveComments();
     }
 };
 var statusOrder = {
@@ -122,12 +134,29 @@ $('rollup').onclick = function() {
     }
 };
 
-function adjustScrollPosition(e) {
+function adjustScrollPosition(comment) {
     return function() {
-        var comment = e.parentNode.getElementsByClassName('comment')[0];
         comment.scrollTop = comment.scrollHeight;
-        e.onmouseenter = undefined;
     };
+}
+
+var HAS_ACTIVE_COMMENTS = false;
+function toggleVisibility(comment) {
+    return function(e) {
+        e.stopPropagation();
+        if (HAS_ACTIVE_COMMENTS) {
+            hideActiveComments();
+        }
+        HAS_ACTIVE_COMMENTS = true;
+        comment.style.display = 'block';
+    };
+}
+function hideActiveComments() {
+    var allComments = document.getElementsByClassName('comment');
+    for (var i = allComments.length - 1; i >= 0; -- i) {
+        allComments[i].style.display = '';
+    }
+    HAS_ACTIVE_COMMENTS = false;
 }
 
 function recomputeRelativeTime() {
@@ -179,5 +208,9 @@ recomputeRelativeTime();
 var commentMetadata = document.getElementsByClassName('comment-metadata');
 for (var i = commentMetadata.length - 1; i >= 0; -- i) {
     var e = commentMetadata[i];
-    e.onmouseenter = adjustScrollPosition(e);
+    var comment = e.parentNode.getElementsByClassName('comment')[0];
+    e.onmouseenter = adjustScrollPosition(comment);
+    e.onclick = toggleVisibility(comment);
 }
+
+document.body.removeChild($('loading-text'));

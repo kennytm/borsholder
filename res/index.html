@@ -2,26 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>borsholder</title>
-    <link rel="stylesheet" href="static/common.css?v=1">
+    <link rel="stylesheet" href="static/common.css?v=2">
     <link rel="icon" href="static/favicon.png?v=1" type="image/png">
     <base target="_blank">
 </head>
 <body>
     {% import "macros.html" as m %}
-    <ul id="bar">
-        <li>
+    <div id="bar">
+        <span>
             Sort by <select id="sort">
                 <option value="priority">approval status</option>
                 <option value="update">recent update</option>
                 <option value="commit">commit time</option>
             </select>
-        </li>
-        <li><input id="filter" type="search" placeholder="filter (case-insensitive regex)"></li>
-        <li><button id="select">Select all</button></li>
-        <li><button id="deselect">Deselect all</button></li>
-        <li>
+        </span>
+        <span>
             {{ stats.count }} total,
             {{ stats.approved }} approved,
             {% if stats.rollups == 1 %}
@@ -29,11 +26,17 @@
             {% else %}
                 {{ stats.rollups }} rollups
             {% endif %}
-        </li>
-        <li><button id="rollup">Create rollup</button></li>
-        <li>(<span id="select-count">0</span> selected)</li>
-        <li id="filter-status"></li>
-    </ul>
+        </span>
+        <span id="bar-details">
+            <input id="filter" type="search" placeholder="filter (case-insensitive regex)">
+            <button id="select">Select all</button>
+            <button id="deselect">Deselect all</button>
+            <button id="rollup">Create rollup</button>
+            <span>(<span id="select-count">0</span> selected)</span>
+            <span id="filter-status"></span>
+        </span>
+    </div>
+    <p id="loading-text">(Still loading, please wait…)</p>
     <ul id="queue">
         {% for number, pr in prs %}
             {% set last_event = pr.timeline | last %}
@@ -55,12 +58,37 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
 {{ pr.status }}{% if pr.is_trying %} (try){% endif %}
 {% for ci in pr.ci_status %}{{ m::ci_name(context=ci.context) }}:{{ ci.state }}
 {% endfor %}">
-            <div class="order">#0</div>
             <div class="number">
+                <div class="order">#0</div>
                 <label><input type="checkbox">{{ number }}</label>
             </div>
             <div class="title">
                 <a href="https://github.com/{{ args.owner }}/{{ args.repository }}/pull/{{ number }}">{{ pr.title }}</a>
+            </div>
+            <ul class="ci-status">
+                {% if pr.mergeable == "CONFLICTING" %}
+                <li class="ci-status-merge-conflict">☔️ merge conflict</li>
+                {% endif %}
+                {{ m::cis(cis=pr.ci_status) }}
+                <li title="r? @{{ pr.reviewer }}
+r={{ pr.approver }}">
+                    {{ m::homu_status(status=pr.status) }}
+                    {% if pr.is_trying %}
+                    (try)
+                    {% endif %}
+                </li>
+            </ul>
+            <div class="tags">
+                {% for label in pr.labels %}
+                {{ m::label(label=label) }}
+                {% endfor %}
+            </div>
+            <div class="priority">
+                {% if pr.priority == -1 %}
+                    rollup
+                {% elif pr.priority > 0 %}
+                    p={{ pr.priority }}
+                {% endif %}
             </div>
             <div class="metadata">
                 opened {{ m::rel_time(datetime=pr.created_at) }} by {{ m::actor(username=pr.author) }}
@@ -131,31 +159,6 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                     {% endfor %}
                 </div>
             </div>
-            <ul class="ci-status">
-                {% if pr.mergeable == "CONFLICTING" %}
-                <li class="ci-status-merge-conflict">☔️ merge conflict</li>
-                {% endif %}
-                {{ m::cis(cis=pr.ci_status) }}
-                <li title="r? @{{ pr.reviewer }}
-r={{ pr.approver }}">
-                    {{ m::homu_status(status=pr.status) }}
-                    {% if pr.is_trying %}
-                    (try)
-                    {% endif %}
-                </li>
-            </ul>
-            <div class="tags">
-                {% for label in pr.labels %}
-                {{ m::label(label=label) }}
-                {% endfor %}
-            </div>
-            <div class="priority">
-                {% if pr.priority == -1 %}
-                    rollup
-                {% elif pr.priority > 0 %}
-                    p={{ pr.priority }}
-                {% endif %}
-            </div>
         </li>
         {% endfor %}
     </ul>
@@ -170,6 +173,6 @@ r={{ pr.approver }}">
         var HOMU_URL = '{{ args.homu_url | url_last_path_component }}';
         var CLIENT_ID = '{{ args.homu_client_id }}';
     </script>
-    <script src="static/common.js?v=5"></script>
+    <script src="static/common.js?v=6"></script>
 </body>
 </html>

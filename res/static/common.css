@@ -1,16 +1,22 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, 'Apple Color Emoji', sans-serif;
     font-size: 12pt;
+    -webkit-text-size-adjust: 100%;
+}
+#loading-text {
+    padding: 24px;
+    color: red;
 }
 #queue {
     padding: 24px 0 400px 0;
     margin: auto;
-    width: 1280px;
+    max-width: 1280px;
 }
 #queue > li {
-    display: block;
+    display: grid;
+    grid-template-columns: 120px auto;
+    align-items: center;
     position: relative;
-    height: 48px;
     margin: 6px 0;
 }
 .hidden {
@@ -19,22 +25,22 @@ html, body {
 .number {
     font-size: 2em;
     font-weight: 100;
-    position: absolute;
-    top: 4px;
-    left: 4px;
+    grid-column: 1;
+    grid-row: 1 / 3;
 }
 .title {
-    position: absolute;
-    left: 120px;
-    top: 6px;
     font-weight: 500;
+    grid-column: 2;
+    grid-row: 1;
+    padding-top: 6px;
 }
 .metadata {
-    position: absolute;
-    left: 120px;
-    top: 29px;
     font-size: 0.75em;
     color: #888;
+    grid-column: 2;
+    grid-row: 2;
+    padding: 3px 0;
+    position: relative;
 }
 .actor, .comment-metadata > a {
     color: #88a;
@@ -56,7 +62,8 @@ a:hover {
     font-size: 0.75em;
     padding: 1px 3px;
     border-radius: 2px;
-    box-shadow: inset 0 -1px 0 rgba(27,31,35,0.12)
+    box-shadow: inset 0 -1px 0 rgba(27,31,35,0.12);
+    display: inline-block;
 }
 .status-Success {
     background: #f3f8ff; /* hsluv(240, 97.5, 97.5) */
@@ -94,12 +101,14 @@ a:hover {
 .status-Reviewing:hover {
     background: #f1f1f1; /* hsluv(0, 0, 95) */
 }
+#queue > li > .ci-status {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right;
+}
 .ci-status {
-    padding: 0;
-    position: absolute;
-    right: 13px;
-    top: 26px;
     font-size: 0.8em;
+    padding: 3px 12px 3px 0;
 }
 .ci-status > li {
     display: inline;
@@ -111,21 +120,19 @@ a:hover {
     padding: 0 2px;
 }
 .priority {
-    position: absolute;
-    right: 180px;
+    grid-column: 2;
+    grid-row: 1 / 3;
     font-size: 2.5em;
     font-style: italic;
     font-weight: 700;
     color: rgba(0,0,0,0.05);
+    text-align: right;
+    padding-right: 180px;
 }
 .comment {
     display: none;
-    position: absolute;
     z-index: 1;
     background: #f8f8f8;
-    width: 960px;
-    max-height: 360px;
-    overflow: auto;
     padding: 12px;
     box-shadow: 0px 3px 12px #aaa;
     top: 14px;
@@ -150,13 +157,11 @@ a:hover {
 .reply-body .ci-status {
     position: static;
 }
-.comment-metadata:hover + .comment, .comment:hover {
-    display: block;
-}
 .tags {
-    position: absolute;
-    right: 12px;
-    top: 4px;
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right;
+    padding: 4px 12px 0 0;
 }
 /* GFM stuff */
 .email-quoted-reply {
@@ -204,16 +209,15 @@ kbd {
     left: 0;
     top: 0;
 }
-#bar > li {
-    display: inline;
+#bar-details > * {
     margin-left: 18px;
 }
 .order {
     position: absolute;
-    top: 12px;
+    top: 15px;
     left: 0px;
     width: 18px;
-    font-size: 0.5em;
+    font-size: 0.25em;
     color: #999;
     text-align: right;
 }
@@ -230,4 +234,40 @@ kbd {
 }
 .reply-body-RenamedTitleEvent {
     border-left-color: #a2a900;
+}
+
+@media (max-width: 1279px) {
+    #bar-details {
+        display: none;
+    }
+    .title {
+        grid-column: 1 / 3;
+        grid-row: 3;
+        padding: 6px;
+    }
+    .metadata {
+        grid-column: 1 / 3;
+        grid-row: 4;
+        padding: 3px 6px;
+    }
+    .ci-status {
+        font-size: 0.7em;
+    }
+    .tag {
+        font-size: 0.6em;
+    }
+    .ci-status > li {
+        margin-left: 4px;
+    }
+}
+@media (min-width: 1280px) {
+    .comment {
+        position: absolute;
+        width: 960px;
+        max-height: 360px;
+        overflow: auto;
+    }
+    .comment-metadata:hover + .comment, .comment:hover {
+        display: block;
+    }
 }
