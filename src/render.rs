@@ -86,8 +86,8 @@ lazy_static! {
         let mut builder = Builder::new();
         builder.tags(hashset![
             "a", "blockquote", "br", "code", "dd", "del", "details", "div", "dl", "dt", "em",
-            "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img", "ins", "kbd", "li", "ol", "p", "pre",
-            "q", "s", "samp", "strike", "strong", "sub", "summary", "sup",
+            "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img", "input", "ins", "kbd", "li", "ol",
+            "p", "pre", "q", "s", "samp", "strike", "strong", "sub", "summary", "sup",
             "table", "tbody", "td", "tfoot", "th", "thead", "tr", "ul", "var",
         ]).tag_attributes(hashmap![
             "a" => hashset!["href"],
@@ -95,6 +95,7 @@ lazy_static! {
             "ol" => hashset!["start"],
             "th" => hashset!["align", "colspan", "rowspan"],
             "td" => hashset!["align", "colspan", "rowspan"],
+            "input" => hashset!["type", "checked"],
         ]).allowed_classes(hashmap!["div" => hashset!["email-quoted-reply"]]);
         builder
     };
