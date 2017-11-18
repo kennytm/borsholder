@@ -1,6 +1,6 @@
 //! GitHub API access.
 
-use errors::Result;
+use failure::Error;
 use reqwest::Client;
 use reqwest::header::{Authorization, Bearer, Headers, Raw};
 use std::str::from_utf8;
@@ -149,7 +149,7 @@ pub fn query(
     token: &str,
     owner: &str,
     repo: &str,
-) -> Result<Vec<graphql::PullRequest>> {
+) -> Result<Vec<graphql::PullRequest>, Error> {
     info!("Preparing to send GitHub request");
     let mut response = client
         .post(GITHUB_ENDPOINT)

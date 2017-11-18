@@ -1,5 +1,10 @@
 extern crate borsholder;
-#[macro_use]
-extern crate error_chain;
 
-quick_main!(borsholder::run);
+use std::process::exit;
+
+fn main() {
+    if let Err(e) = borsholder::run() {
+        println!("{}", e);
+        exit(1);
+    }
+}

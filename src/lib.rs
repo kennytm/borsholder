@@ -17,8 +17,9 @@ extern crate ammonia;
 extern crate antidote;
 extern crate chrono;
 extern crate env_logger;
+extern crate failure;
 #[macro_use]
-extern crate error_chain;
+extern crate failure_derive;
 extern crate futures;
 extern crate hyper;
 extern crate kuchiki;
@@ -42,7 +43,6 @@ extern crate structopt_derive;
 #[macro_use]
 extern crate tera;
 
-pub mod errors;
 mod args;
 mod github;
 mod homu;
@@ -52,14 +52,14 @@ mod server;
 use args::Args;
 use chrono::Local;
 use env_logger::LogBuilder;
-use errors::Result;
+use failure::Error;
 use server::serve;
 use std::env::var;
 use structopt::StructOpt;
 
 /// Runs the borsholder CLI.
 #[cfg_attr(feature = "cargo-clippy", allow(print_stdout))]
-pub fn run() -> Result<()> {
+pub fn run() -> Result<(), Error> {
     init_logger();
     let args = Args::from_args();
     println!("Please open http://{}", args.address);

@@ -15,11 +15,12 @@ is-it-maintained-open-issues = { repository = "kennytm/borsholder" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-ammonia = "1.0.0-rc3"
+ammonia = "1"
 antidote = "1"
 chrono = { version = "0.4", features = ["serde"] }
 env_logger = "0.4"
-error-chain = "0.10"    # tera 0.10 depends on error-chain 0.10.
+failure = "0.1"
+failure_derive = "0.1"
 futures = "0.1"
 hyper = "0.11"
 kuchiki = "0.6"

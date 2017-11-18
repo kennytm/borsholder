@@ -1,6 +1,6 @@
 //! Home queue web scraper.
 
-use errors::{Result, ResultExt};
+use failure::{err_msg, Error, ResultExt};
 use kuchiki::parse_html;
 use kuchiki::traits::TendrilSink;
 use markup5ever::ExpandedName;
@@ -48,7 +48,7 @@ impl Default for Status {
 }
 
 /// Obtains the list of pull requests and associated information from Homu queue.
-pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>> {
+pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>, Error> {
     info!("Preparing to send Homu request");
 
     let mut resp = client.get(url.clone()).send()?.error_for_status()?;
@@ -71,10 +71,10 @@ pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>> {
             .collect::<Vec<_>>();
 
         if tds.len() != 10 {
-            bail!("Homu queue structure probably changed. Aborting.");
+            return Err(err_msg("Homu queue structure probably changed. Aborting."));
         }
 
-        let number = tds[2].parse().chain_err(|| "invalid PR number")?;
+        let number = tds[2].parse::<u32>().context("invalid PR number")?;
         let (status, is_trying) = parse_status(&tds[3]);
         let priority = parse_priority(&tds[9]);
         let approver = tds.swap_remove(8);

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::time::UNIX_EPOCH;
 use std::str::FromStr;
-use tera::{Tera, Value};
+use tera::{self, Tera, Value};
 
 /// Information of a pull request.
 #[derive(Serialize)]
@@ -220,4 +220,17 @@ where
 /// If the result is an error, converts it to a string so that it can be recognized by Tera.
 fn map_err_to_string<T, E: Display>(a: Result<T, E>) -> ::tera::Result<T> {
     Ok(a.map_err(|e| e.to_string())?)
+}
+
+/// Wraps a `tera::Error` to use the `Fail` trait.
+#[derive(Debug, Fail)]
+#[fail(display = "{}", kind)]
+pub struct TeraFailure {
+    kind: tera::ErrorKind,
+}
+
+impl From<tera::Error> for TeraFailure {
+    fn from(e: tera::Error) -> Self {
+        TeraFailure { kind: e.0 }
+    }
 }

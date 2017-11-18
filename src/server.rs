@@ -3,16 +3,15 @@
 use antidote::{Condvar, Mutex, MutexGuard};
 use args::Args;
 use chrono::{DateTime, Utc};
-use error_chain::ChainedError;
-use errors::Result;
+use failure::Error;
 use futures::future::{ok, FutureResult};
-use hyper::{Error, StatusCode};
+use hyper::{self, StatusCode};
 use hyper::header::{CacheControl, ContentType};
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
 use mime::{Mime, TEXT_CSS, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
-use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats};
+use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
 use reqwest::{Client, Proxy};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -28,10 +27,10 @@ use tera::Tera;
 /// Serves the borsholder web page configured according to `args`.
 ///
 /// This method will not return until the server is shutdown.
-pub fn serve(mut args: Args) -> Result<()> {
+pub fn serve(mut args: Args) -> Result<(), Error> {
     let tera_pattern_os = args.templates.join("*.html").into_os_string();
     let tera_pattern = tera_pattern_os.to_string_lossy();
-    let mut tera = Tera::new(&tera_pattern)?;
+    let mut tera = Tera::new(&tera_pattern).map_err(TeraFailure::from)?;
     register_tera_filters(&mut tera);
     let mut builder = Client::builder();
     if let Some(proxy) = args.proxy.take() {
@@ -116,8 +115,8 @@ struct RenderData<'a> {
 impl Service for Handler {
     type Request = Request;
     type Response = Response;
-    type Error = Error;
-    type Future = FutureResult<Response, Error>;
+    type Error = hyper::Error;
+    type Future = FutureResult<Response, hyper::Error>;
 
     fn call(&self, request: Request) -> Self::Future {
         let uri = request.uri();
@@ -127,7 +126,7 @@ impl Service for Handler {
         if let Err(e) = self.serve(uri.path(), &mut response) {
             response.set_status(StatusCode::InternalServerError);
             response.headers_mut().set(ContentType::plaintext());
-            response.set_body(e.display().to_string());
+            response.set_body(e.to_string());
         }
 
         debug!("Responding with {}", response.status());
@@ -175,7 +174,7 @@ lazy_static! {
 
 impl Handler {
     /// Serves a response from the URL.
-    fn serve(&self, path: &str, response: &mut Response) -> Result<()> {
+    fn serve(&self, path: &str, response: &mut Response) -> Result<(), Error> {
         match path {
             "/" => {
                 let body = self.render()?;
@@ -228,7 +227,7 @@ impl Handler {
     /// Renders the web page.
     ///
     /// This method will *synchronously* download PR information from GitHub and Homu.
-    fn render(&self) -> Result<String> {
+    fn render(&self) -> Result<String, Error> {
         let args = &self.context.args;
 
         let github_guard = GITHUB_ENTRIES.lock();
@@ -244,14 +243,17 @@ impl Handler {
             homu_last_update: homu_guard.1,
         };
 
-        let body = self.tera.borrow().render("index.html", &data)?;
+        let body = self.tera
+            .borrow()
+            .render("index.html", &data)
+            .map_err(TeraFailure::from)?;
         Ok(body)
     }
 
     /// Reloads the Tera template.
-    fn reload_templates(&self) -> Result<()> {
+    fn reload_templates(&self) -> Result<(), Error> {
         let mut tera = self.tera.borrow_mut();
-        tera.full_reload()?;
+        tera.full_reload().map_err(TeraFailure::from)?;
         Ok(())
     }
 }
@@ -260,7 +262,7 @@ impl Handler {
 ///
 /// The `query` function will be executed periodically. On success, it will
 /// write the result into the `output` cache.
-fn worker_thread<T, F: FnMut() -> Result<T>>(context: &Context, output: &Cache<T>, mut query: F) {
+fn worker_thread<T, F: Fn() -> Result<T, Error>>(context: &Context, output: &Cache<T>, query: F) {
     loop {
         let sleep_duration = match query() {
             Ok(entries) => {
