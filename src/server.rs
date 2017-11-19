@@ -9,7 +9,7 @@ use hyper::{self, StatusCode};
 use hyper::header::{CacheControl, ContentType};
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
-use mime::{Mime, TEXT_CSS, TEXT_JAVASCRIPT, IMAGE_PNG};
+use mime::{Mime, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
 use reqwest::{Client, Proxy};

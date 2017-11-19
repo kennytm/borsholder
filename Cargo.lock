@@ -98,7 +98,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "borsholder"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "ammonia 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "antidote 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
