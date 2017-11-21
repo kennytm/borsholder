@@ -261,6 +261,9 @@ kbd {
     .ci-status > li {
         margin-left: 4px;
     }
+    .priority {
+        padding-right: 140px;
+    }
 }
 @media (min-width: 1280px) {
     .comment {
