@@ -25,6 +25,7 @@ extern crate hyper;
 extern crate kuchiki;
 #[macro_use]
 extern crate lazy_static;
+extern crate libflate;
 #[macro_use]
 extern crate log;
 #[macro_use]

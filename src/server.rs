@@ -6,9 +6,10 @@ use chrono::{DateTime, Utc};
 use failure::Error;
 use futures::future::{ok, FutureResult};
 use hyper::{self, StatusCode};
-use hyper::header::{CacheControl, ContentType};
+use hyper::header::{AcceptEncoding, CacheControl, ContentEncoding, ContentType, Encoding};
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
+use libflate::gzip::Encoder;
 use mime::{Mime, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
@@ -17,7 +18,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread;
@@ -123,7 +124,11 @@ impl Service for Handler {
         debug!("Received request to {}", uri);
 
         let mut response = Response::new();
-        if let Err(e) = self.serve(uri.path(), &mut response) {
+
+        let encodings = request.headers().get::<AcceptEncoding>();
+        let can_gzip = encodings.map_or(false, |ae| ae.iter().any(|q| q.item == Encoding::Gzip));
+
+        if let Err(e) = self.serve(uri.path(), &mut response, can_gzip) {
             response.set_status(StatusCode::InternalServerError);
             response.headers_mut().set(ContentType::plaintext());
             response.set_body(e.to_string());
@@ -175,13 +180,13 @@ lazy_static! {
 
 impl Handler {
     /// Serves a response from the URL.
-    fn serve(&self, path: &str, response: &mut Response) -> Result<(), Error> {
+    fn serve(&self, path: &str, response: &mut Response, can_gzip: bool) -> Result<(), Error> {
         match path {
             "/" => {
                 let body = self.render()?;
                 response.set_status(StatusCode::Ok);
                 response.headers_mut().set(ContentType::html());
-                response.set_body(body);
+                set_response_body(response, body.as_bytes(), can_gzip)?;
             }
             "/reloadTemplates" => {
                 self.reload_templates()?;
@@ -204,11 +209,6 @@ impl Handler {
                             .and_then(OsStr::to_str)
                             .and_then(|ext| KNOWN_CONTENT_TYPES.get(ext));
 
-                        let mut file = File::open(path)?;
-                        let mut body = Vec::new();
-                        file.read_to_end(&mut body)?;
-                        drop(file);
-
                         response.set_status(StatusCode::Ok);
                         {
                             let headers = response.headers_mut();
@@ -217,7 +217,9 @@ impl Handler {
                                 headers.set(ContentType(mime.clone()));
                             }
                         }
-                        response.set_body(body);
+
+                        let file = File::open(path)?;
+                        set_response_body(response, file, can_gzip)?;
                     }
                 }
             }
@@ -307,4 +309,28 @@ fn load_from_homu(context: &Context) {
     worker_thread(context, &HOMU_ENTRIES, || {
         ::homu::query(&context.client, &context.args.homu_url)
     });
+}
+
+/// Sets the response's body with optional compression.
+///
+/// If `can_gzip` is true, the body will be gzip-compressed, and the corresponding
+/// `Content-Encoding: gzip` header will be added to the response.
+fn set_response_body<R: Read>(
+    response: &mut Response,
+    mut body: R,
+    can_gzip: bool,
+) -> io::Result<()> {
+    let mut compressed = Vec::new();
+    if can_gzip {
+        let mut encoder = Encoder::new(compressed)?;
+        io::copy(&mut body, &mut encoder)?;
+        compressed = encoder.finish().into_result()?;
+        response
+            .headers_mut()
+            .set(ContentEncoding(vec![Encoding::Gzip]));
+    } else {
+        body.read_to_end(&mut compressed)?;
+    }
+    response.set_body(compressed);
+    Ok(())
 }

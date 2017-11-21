@@ -227,11 +227,12 @@ fn map_err_to_string<T, E: Display>(a: Result<T, E>) -> ::tera::Result<T> {
 #[derive(Debug, Fail)]
 #[fail(display = "{}", kind)]
 pub struct TeraFailure {
+    /// The Tera error kind.
     kind: tera::ErrorKind,
 }
 
 impl From<tera::Error> for TeraFailure {
     fn from(e: tera::Error) -> Self {
-        TeraFailure { kind: e.0 }
+        Self { kind: e.0 }
     }
 }

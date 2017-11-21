@@ -1,6 +1,6 @@
 [package]
 name = "borsholder"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Dashboard of rust-lang/rust's bors queue."
 license = "MIT"
@@ -25,6 +25,7 @@ futures = "0.1"
 hyper = "0.11"
 kuchiki = "0.6"
 lazy_static = "0.2"
+libflate = "0.1"
 log = "0.3"
 maplit = "1"
 markup5ever = "0.5"     # kuchiki 0.6 depends on html5ever 0.20 which depends on markup5ever 0.5
