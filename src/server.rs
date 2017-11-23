@@ -6,7 +6,8 @@ use chrono::{DateTime, Utc};
 use failure::Error;
 use futures::future::{ok, FutureResult};
 use hyper::{self, StatusCode};
-use hyper::header::{AcceptEncoding, CacheControl, ContentEncoding, ContentType, Encoding};
+use hyper::header::{AcceptEncoding, CacheControl, Connection, ConnectionOption, ContentEncoding,
+                    ContentType, Encoding, Headers};
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
 use libflate::gzip::Encoder;
@@ -33,11 +34,18 @@ pub fn serve(mut args: Args) -> Result<(), Error> {
     let tera_pattern = tera_pattern_os.to_string_lossy();
     let mut tera = Tera::new(&tera_pattern).map_err(TeraFailure::from)?;
     register_tera_filters(&mut tera);
+
     let mut builder = Client::builder();
     if let Some(proxy) = args.proxy.take() {
         builder.proxy(Proxy::all(proxy)?);
     }
-    let client = builder.timeout(Duration::from_secs(120)).build()?;
+    let mut default_headers = Headers::new();
+    default_headers.set(Connection(vec![ConnectionOption::Close]));
+    let client = builder
+        .timeout(Duration::from_secs(120))
+        .default_headers(default_headers)
+        .build()?;
+
     let address = args.address;
     let is_server_dead = Mutex::new(false);
     let is_server_dead_condition = Condvar::new();
