@@ -29,7 +29,7 @@ $filter.onkeyup = $filter.onsearch = function() {
     $('filter-status').innerHTML = filterValue && ('(' + filterCount + ' filtered)');
 };
 function updateSelectCount() {
-    var allInputs = document.querySelectorAll('#queue input');
+    var allInputs = document.querySelectorAll('#queue .number input');
     var selectedCount = 0;
     for (var i = allInputs.length - 1; i >= 0; -- i) {
         selectedCount += allInputs[i].checked;
@@ -39,7 +39,7 @@ function updateSelectCount() {
 function toggleCheckboxes(shouldChecked) {
     return function() {
         var children = $prs.children;
-        var allInputs = document.querySelectorAll('#queue > li:not(.hidden) input');
+        var allInputs = document.querySelectorAll('#queue > li:not(.hidden) > .number input');
         for (var i = allInputs.length - 1; i >= 0; -- i) {
             allInputs[i].checked = shouldChecked;
         }
