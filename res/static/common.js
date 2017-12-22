@@ -116,7 +116,7 @@ function doSort() {
 $sort.onchange = doSort;
 doSort();
 $('rollup').onclick = function() {
-    var allInputs = document.querySelectorAll('#queue input');
+    var allInputs = document.querySelectorAll('#queue .number input');
     var prs = [];
     for (var i = allInputs.length - 1; i >= 0; -- i) {
         var checkbox = allInputs[i];
