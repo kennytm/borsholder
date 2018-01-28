@@ -274,6 +274,12 @@ kbd {
     .sort-by-description::after {
         content: "⇅";
     }
+    .comment {
+        width: calc(100vw - 54px);
+    }
+    pre {
+        overflow: scroll;
+    }
 }
 @media (min-width: 1280px) {
     .comment {
