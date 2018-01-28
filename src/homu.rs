@@ -15,10 +15,6 @@ pub struct Entry {
     pub status: Status,
     /// Whether the approval status applies to a "try" run.
     pub is_trying: bool,
-    /// Assigned reviewer.
-    pub reviewer: String,
-    /// Person who approved the PR.
-    pub approver: String,
     /// Priority. Rollups are always assigned a priority of `-1`.
     pub priority: i32,
 }
@@ -76,8 +72,6 @@ pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>, Error> {
         let number = tds[2].parse::<u32>().context("invalid PR number")?;
         let (status, is_trying) = parse_status(&tds[3]);
         let priority = parse_priority(&tds[9]);
-        let approver = tds.swap_remove(8);
-        let reviewer = tds.swap_remove(7);
         let title = tds.swap_remove(5);
 
         res.push(Entry {
@@ -85,8 +79,6 @@ pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>, Error> {
             title,
             status,
             is_trying,
-            reviewer,
-            approver,
             priority,
         });
     }

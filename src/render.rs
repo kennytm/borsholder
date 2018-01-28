@@ -34,10 +34,6 @@ pub struct Pr<'a> {
     status: Status,
     /// Whether the approval status applies to a "try" run.
     is_trying: bool,
-    /// Assigned reviewer.
-    reviewer: &'a str,
-    /// Person who approved the PR.
-    approver: &'a str,
     /// Priority. Rollups are always assigned a priority of `-1`.
     priority: i32,
     /// Number of additions to the PR.
@@ -71,8 +67,6 @@ impl<'a> Default for Pr<'a> {
             timeline: &[],
             status: Status::Reviewing,
             is_trying: false,
-            reviewer: "",
-            approver: "",
             priority: 0,
             additions: 0,
             deletions: 0,
@@ -129,16 +123,12 @@ pub fn parse_prs<'a>(
     }
 
     for h in homu_entries {
-        let pr = prs.entry(h.number).or_insert_with(|| {
-            Pr {
+        let pr = prs.entry(h.number).or_insert_with(|| Pr {
                 title: &h.title,
                 ..Pr::default()
-            }
         });
         pr.status = h.status;
         pr.is_trying = h.is_trying;
-        pr.reviewer = &h.reviewer;
-        pr.approver = &h.approver;
         pr.priority = h.priority;
     }
 

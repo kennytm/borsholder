@@ -68,8 +68,7 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                 <li class="ci-status-merge-conflict">☔️ merge conflict</li>
                 {%- endif -%}
                 {{ m::cis(cis=pr.ci_status) }}
-                <li title="r? @{{ pr.reviewer }}
-r={{ pr.approver }}">
+                <li>
                     {{ m::homu_status(status=pr.status) }}
                     {%- if pr.is_trying %}
                     (try)
@@ -92,12 +91,6 @@ r={{ pr.approver }}">
                 opened {{ m::rel_time(datetime=pr.created_at) }} by {{ m::actor(username=pr.author) }}
                 ::
                 <span class="additions">+{{ pr.additions }}</span>/<span class="deletions">−{{ pr.deletions }}</span>
-                ::
-                {% if pr.reviewer -%}
-                    r? {{ m::actor(username=pr.reviewer) }}
-                {%- else -%}
-                    unassigned
-                {%- endif %}
                 ::
                 committed {{ m::rel_time(datetime=pr.committed_at) }}
                 ::
