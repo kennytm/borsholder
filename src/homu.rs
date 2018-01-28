@@ -3,7 +3,6 @@
 use failure::{err_msg, Error, ResultExt};
 use kuchiki::parse_html;
 use kuchiki::traits::TendrilSink;
-use markup5ever::ExpandedName;
 use reqwest::{Client, Url};
 
 /// An entry in the Homu queue.

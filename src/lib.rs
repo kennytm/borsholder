@@ -51,12 +51,11 @@ mod render;
 mod server;
 
 use args::Args;
-use chrono::Local;
-use env_logger::LogBuilder;
+use env_logger::{Builder, Env};
 use failure::Error;
 use server::serve;
-use std::env::var;
 use structopt::StructOpt;
+use std::io::Write;
 
 /// Runs the borsholder CLI.
 #[cfg_attr(feature = "cargo-clippy", allow(print_stdout))]
@@ -70,14 +69,12 @@ pub fn run() -> Result<(), Error> {
 /// Initializes the logger via the `RUST_LOG` variable. See documentation of
 /// [`env_logger`] for syntax.
 ///
-/// [`env_logger`]: https://docs.rs/crate/env_logger/0.4.3
+/// [`env_logger`]: https://docs.rs/crate/env_logger/0.5.3
 fn init_logger() {
-    let mut log_builder = LogBuilder::new();
-    log_builder.format(|record| {
-        format!("[{}][{}]: {}", record.level(), Local::now(), record.args())
-    });
-    if let Ok(filters) = var("RUST_LOG") {
-        log_builder.parse(&filters);
-    }
-    log_builder.init().expect("set logger");
+    Builder::from_env(Env::default())
+        .format(|buf, record| {
+            let timestamp = buf.timestamp();
+            writeln!(buf, "[{}][{}]: {}", record.level(), timestamp, record.args())
+        })
+        .init();
 }
