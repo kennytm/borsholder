@@ -12,26 +12,25 @@
     {% import "macros.html" as m %}
     <div id="bar">
         <span>
-            Sort by <select id="sort">
+            <span class="sort-by-description"></span>
+            <select id="sort">
                 <option value="priority">approval status</option>
                 <option value="update">recent update</option>
             </select>
         </span>
-        <span>{{ stats.count }} total, {{ stats.approved }} approved,
-            {%- if stats.rollups == 1 -%}
-                1 rollup
-            {%- else -%}
-                {{ stats.rollups }} rollups
-            {%- endif -%}
+        <span>
+            <span class="count-total">{{ stats.count }}</span>
+            <span class="count-approved">{{ stats.approved }}</span>
+            <span class="count-rollups">{{ stats.rollups }}</span>
         </span>
         <span id="bar-details">
             <input id="filter" type="search" placeholder="filter (case-insensitive regex)">
             <button id="select">Select all</button>
             <button id="deselect">Deselect all</button>
-            <button id="rollup">Create rollup</button>
-            <span>(<span id="select-count">0</span> selected)</span>
-            <span id="filter-status"></span>
         </span>
+        <button id="rollup">Create rollup</button>
+        <span>(<span id="select-count">0</span>)</span>
+        <span id="filter-status"></span>
     </div>
     <p id="loading-text">(Still loading, please wait…)</p>
     <ul id="queue">

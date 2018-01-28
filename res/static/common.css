@@ -264,6 +264,15 @@ kbd {
     .priority {
         padding-right: 140px;
     }
+    .count-approved::before {
+        content: "/+";
+    }
+    .count-rollups::before {
+        content: "/↺";
+    }
+    .sort-by-description::after {
+        content: "⇅";
+    }
 }
 @media (min-width: 1280px) {
     .comment {
@@ -274,5 +283,20 @@ kbd {
     }
     .comment-metadata:hover + .comment, .comment:hover {
         display: block;
+    }
+    .count-total::after {
+        content: " total,";
+    }
+    .count-approved::after {
+        content: " approved,";
+    }
+    .count-rollups::after {
+        content: " rollups";
+    }
+    .sort-by-description::after {
+        content: "Sort by";
+    }
+    #select-count::after {
+        content: " selected";
     }
 }
