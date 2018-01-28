@@ -168,8 +168,7 @@ pub fn query(
         let rate_limit_limit = fetch_rate_limit(headers, "X-RateLimit-Limit");
         info!(
             "GitHub rate limit: {}/{}",
-            rate_limit_remaining,
-            rate_limit_limit
+            rate_limit_remaining, rate_limit_limit
         );
     }
 

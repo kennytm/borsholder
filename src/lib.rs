@@ -73,7 +73,13 @@ fn init_logger() {
     Builder::from_env(Env::default())
         .format(|buf, record| {
             let timestamp = buf.timestamp();
-            writeln!(buf, "[{}][{}]: {}", record.level(), timestamp, record.args())
+            writeln!(
+                buf,
+                "[{}][{}]: {}",
+                record.level(),
+                timestamp,
+                record.args()
+            )
         })
         .init();
 }

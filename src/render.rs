@@ -101,8 +101,8 @@ pub fn parse_prs<'a>(
 
     for h in homu_entries {
         let pr = prs.entry(h.number).or_insert_with(|| Pr {
-                title: &h.title,
-                ..Pr::default()
+            title: &h.title,
+            ..Pr::default()
         });
         pr.status = h.status;
         pr.is_trying = h.is_trying;
@@ -131,10 +131,9 @@ pub fn summarize_prs<'b, 'a: 'b, I: IntoIterator<Item = &'b Pr<'a>>>(prs: I) -> 
 pub fn register_tera_filters(tera: &mut Tera) {
     if cfg!(debug_assertions) {
         #[cfg_attr(feature = "cargo-clippy", allow(use_debug))]
-        tera.register_filter(
-            "debug",
-            |input, _| Ok(Value::String(format!("{:#?}", input))),
-        );
+        tera.register_filter("debug", |input, _| {
+            Ok(Value::String(format!("{:#?}", input)))
+        });
     }
     tera.register_filter("local_datetime", |input, _| {
         let result = parse::<DateTime<Utc>>("local_datetime", &input)?
