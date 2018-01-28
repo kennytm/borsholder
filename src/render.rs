@@ -90,7 +90,6 @@ pub fn parse_prs<'a>(
                 mergeable: gh.mergeable,
                 title: &gh.title,
                 labels: &gh.labels.nodes,
-                committed_at: commit.committed_date,
                 ci_status: commit.status.as_ref().map_or(&[], |s| &s.contexts),
                 timeline: &gh.timeline.nodes,
                 additions: gh.additions,

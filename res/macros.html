@@ -6,7 +6,7 @@
 <a class="actor" href="https://github.com/{{ username }}">@{{ username }}</a>
 {%- endmacro actor -%}
 
-{% macro label(label) %}
+{%- macro label(label) %}
 <span class="tag" style="background:#{{ label.color }};color:{{ label.color | text_color }}">{{ label.name }}</span>
 {%- endmacro label %}
 

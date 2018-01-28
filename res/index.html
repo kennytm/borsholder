@@ -15,7 +15,6 @@
             Sort by <select id="sort">
                 <option value="priority">approval status</option>
                 <option value="update">recent update</option>
-                <option value="commit">commit time</option>
             </select>
         </span>
         <span>{{ stats.count }} total, {{ stats.approved }} approved,
@@ -43,7 +42,6 @@
         <li id="pr-{{ number }}" class="status-{{ pr.status }}"
                 data-priority="{{ pr.status }}:{{ pr.priority }}:{{ number }}"
                 data-update="{{ update_at }}"
-                data-commit="{{ pr.committed_at }}"
                 data-number="{{ number }}"
                 data-filter="
 number:{{ number }}
@@ -91,8 +89,6 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                 opened {{ m::rel_time(datetime=pr.created_at) }} by {{ m::actor(username=pr.author) }}
                 ::
                 <span class="additions">+{{ pr.additions }}</span>/<span class="deletions">−{{ pr.deletions }}</span>
-                ::
-                committed {{ m::rel_time(datetime=pr.committed_at) }}
                 ::
                 <span class="comment-metadata">
                     {%- set update_at_html = m::rel_time(datetime=update_at) -%}

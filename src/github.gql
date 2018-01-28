@@ -81,13 +81,17 @@ query ($owner: String!, $repo: String!) {
               lastEditedAt
             }
             ... on IssueComment {
-              databaseId
+              url
             }
             ... on PullRequestReview {
               url
               state
             }
             ... on PullRequestReviewComment {
+              url
+            }
+
+            ... on UniformResourceLocatable {
               url
             }
 
@@ -120,7 +124,6 @@ query ($owner: String!, $repo: String!) {
               source {
                 ...ReferencedSubject
               }
-              url
             }
             ... on DemilestonedEvent {
               actor {
@@ -204,7 +207,6 @@ query ($owner: String!, $repo: String!) {
               }
               createdAt
               message
-              url
             }
             ... on ReviewRequestRemovedEvent {
               actor {
