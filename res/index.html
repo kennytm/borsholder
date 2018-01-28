@@ -60,6 +60,13 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                 <div class="order">#0</div>
                 <label><input type="checkbox">{{ number }}</label>
             </div>
+            <div class="priority">
+                {%- if pr.priority == -1 -%}
+                    rollup
+                {%- elif pr.priority > 0 -%}
+                    p={{ pr.priority }}
+                {%- endif -%}
+            </div>
             <div class="title">
                 <a href="https://github.com/{{ args.owner }}/{{ args.repository }}/pull/{{ number }}">{{ pr.title }}</a>
             </div>
@@ -79,13 +86,6 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                 {%- for label in pr.labels -%}
                 {{ m::label(label=label) }}
                 {%- endfor -%}
-            </div>
-            <div class="priority">
-                {%- if pr.priority == -1 -%}
-                    rollup
-                {%- elif pr.priority > 0 -%}
-                    p={{ pr.priority }}
-                {%- endif -%}
             </div>
             <div class="metadata">
                 opened {{ m::rel_time(datetime=pr.created_at) }} by {{ m::actor(username=pr.author) }}
