@@ -18,14 +18,12 @@
                 <option value="commit">commit time</option>
             </select>
         </span>
-        <span>
-            {{ stats.count }} total,
-            {{ stats.approved }} approved,
-            {% if stats.rollups == 1 %}
+        <span>{{ stats.count }} total, {{ stats.approved }} approved,
+            {%- if stats.rollups == 1 -%}
                 1 rollup
-            {% else %}
+            {%- else -%}
                 {{ stats.rollups }} rollups
-            {% endif %}
+            {%- endif -%}
         </span>
         <span id="bar-details">
             <input id="filter" type="search" placeholder="filter (case-insensitive regex)">
@@ -38,10 +36,10 @@
     </div>
     <p id="loading-text">(Still loading, please wait…)</p>
     <ul id="queue">
-        {% for number, pr in prs %}
-            {% set last_event = pr.timeline | last %}
-            {% set update_at = m::event_time(event=last_event) %}
-            {% set update_user = m::event_user(event=last_event) %}
+        {%- for number, pr in prs -%}
+            {%- set last_event = pr.timeline | last -%}
+            {%- set update_at = m::event_time(event=last_event) -%}
+            {%- set update_user = m::event_user(event=last_event) -%}
         <li id="pr-{{ number }}" class="status-{{ pr.status }}"
                 data-priority="{{ pr.status }}:{{ pr.priority }}:{{ number }}"
                 data-update="{{ update_at }}"
@@ -66,101 +64,101 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                 <a href="https://github.com/{{ args.owner }}/{{ args.repository }}/pull/{{ number }}">{{ pr.title }}</a>
             </div>
             <ul class="ci-status">
-                {% if pr.mergeable == "CONFLICTING" %}
+                {%- if pr.mergeable == "CONFLICTING" -%}
                 <li class="ci-status-merge-conflict">☔️ merge conflict</li>
-                {% endif %}
+                {%- endif -%}
                 {{ m::cis(cis=pr.ci_status) }}
                 <li title="r? @{{ pr.reviewer }}
 r={{ pr.approver }}">
                     {{ m::homu_status(status=pr.status) }}
-                    {% if pr.is_trying %}
+                    {%- if pr.is_trying %}
                     (try)
-                    {% endif %}
+                    {%- endif -%}
                 </li>
             </ul>
             <div class="tags">
-                {% for label in pr.labels %}
+                {%- for label in pr.labels -%}
                 {{ m::label(label=label) }}
-                {% endfor %}
+                {%- endfor -%}
             </div>
             <div class="priority">
-                {% if pr.priority == -1 %}
+                {%- if pr.priority == -1 -%}
                     rollup
-                {% elif pr.priority > 0 %}
+                {%- elif pr.priority > 0 -%}
                     p={{ pr.priority }}
-                {% endif %}
+                {%- endif -%}
             </div>
             <div class="metadata">
                 opened {{ m::rel_time(datetime=pr.created_at) }} by {{ m::actor(username=pr.author) }}
                 ::
                 <span class="additions">+{{ pr.additions }}</span>/<span class="deletions">−{{ pr.deletions }}</span>
                 ::
-                {% if pr.reviewer %}
+                {% if pr.reviewer -%}
                     r? {{ m::actor(username=pr.reviewer) }}
-                {% else %}
+                {%- else -%}
                     unassigned
-                {% endif %}
+                {%- endif %}
                 ::
                 committed {{ m::rel_time(datetime=pr.committed_at) }}
                 ::
                 <span class="comment-metadata">
+                    {%- set update_at_html = m::rel_time(datetime=update_at) -%}
                     updated
-                    {% set update_at_html = m::rel_time(datetime=update_at) %}
                     {{ m::event_url(event=last_event, args=args, number=number, html=update_at_html) }}
-                    {% if update_user %}
+                    {% if update_user -%}
                         by {{ m::actor(username=update_user) }}
-                    {% endif %}
+                    {%- endif -%}
                 </span>
                 <div class="comment">
-                    {% for event in pr.timeline %}
-                        {% set at = m::event_time(event=event) %}
-                        {% set at_html = m::rel_time(datetime=at) %}
-                        {% set user = m::event_user(event=event) %}
+                    {%- for event in pr.timeline -%}
+                        {%- set at = m::event_time(event=event) -%}
+                        {%- set at_html = m::rel_time(datetime=at) -%}
+                        {%- set user = m::event_user(event=event) -%}
                         <p class="reply-line">
                             {{ m::event_icon(event=event) }}
                             {{ m::event_url(event=event, args=args, number=number, html=at_html) }}
                             — {{ m::actor(username=user) }}
                             {{ m::event_verb_phrase(event=event) }}
-                            {% if event.editor.login is defined %}
+                            {% if event.editor.login is defined -%}
                             <small>
                                 [last edited {{ m::rel_time(datetime=event.lastEditedAt) }}
                                 by {{ m::actor(username=event.editor.login) }}]
                             </small>
-                            {% endif %}
+                            {%- endif -%}
                         </p>
                         <div class="reply-body reply-body-{{ event.__typename }}">
-                            {% if event.bodyHTML is defined %}
-                                {{ event.bodyHTML | sanitize | safe }}
-                            {% elif event.__typename == "CrossReferencedEvent" %}
+                            {%- if event.bodyHTML is defined -%}
+                                {{ event.bodyHTML | safe | sanitize }}
+                            {%- elif event.__typename == "CrossReferencedEvent" -%}
                                 Ref {{ event.source.__typename }} #{{ event.source.number }}:
                                 <a href="{{ event.source.url }}">{{ event.source.title }}</a>
-                            {% elif event.__typename == "ReferencedEvent" %}
+                            {%- elif event.__typename == "ReferencedEvent" -%}
                                 Ref Commit <code>{{ event.commit.abbreviatedOid }}</code>:
                                 <a href="{{ event.commit.url }}">{{ event.commit.messageHeadline }}</a>
-                                {% if event.commit.status.contexts is defined %}
+                                {%- if event.commit.status.contexts is defined -%}
                                 <ul class="ci-status">
                                     {{ m::cis(cis=event.commit.status.contexts) }}
                                 </ul>
-                                {% endif %}
-                            {% elif event.__typename == "Commit" %}
+                                {%- endif -%}
+                            {%- elif event.__typename == "Commit" -%}
                                 Commit <code>{{ event.abbreviatedOid }}</code>:
                                 <a href="{{ event.url }}">{{ event.messageHeadline }}</a>
-                                {% if event.status.contexts is defined %}
+                                {%- if event.status.contexts is defined -%}
                                 <ul class="ci-status">
                                     {{ m::cis(cis=event.status.contexts) }}
                                 </ul>
-                                {% endif %}
-                            {% elif event.__typename == "RenamedTitleEvent" %}
+                                {%- endif -%}
+                            {%- elif event.__typename == "RenamedTitleEvent" -%}
                                 {{ event.previousTitle }}<br>
                                 ↓<br>
                                 {{ event.currentTitle }}
-                            {% endif %}
+                            {%- endif -%}
                         </div>
-                    {% endfor %}
+                    {%- endfor -%}
                 </div>
             </div>
         </li>
-        {% endfor %}
+        {%- endfor -%}
     </ul>
     <p>
         Last sync:
