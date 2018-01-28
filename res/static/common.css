@@ -164,6 +164,7 @@ a:hover {
     grid-row: 1;
     padding: 4px 12px 0 0;
     justify-self: end;
+    text-align: right;
 }
 /* GFM stuff */
 .email-quoted-reply {
