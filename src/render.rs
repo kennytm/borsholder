@@ -1,6 +1,5 @@
 //! Utilities for rendering the page via Tera.
 
-use ammonia::Builder;
 use chrono::{DateTime, Local, Utc};
 use github::graphql::{Label, MergeableState, PullRequest, StatusContext};
 use homu::{Entry, Status};
@@ -72,27 +71,6 @@ impl<'a> Default for Pr<'a> {
             deletions: 0,
         }
     }
-}
-
-lazy_static! {
-    /// The sanitizer used to clean up a raw PR comment.
-    static ref HTML_SANITIZER: Builder<'static> = {
-        let mut builder = Builder::new();
-        builder.tags(hashset![
-            "a", "blockquote", "br", "code", "dd", "del", "details", "div", "dl", "dt", "em",
-            "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img", "input", "ins", "kbd", "li", "ol",
-            "p", "pre", "q", "s", "samp", "strike", "strong", "sub", "summary", "sup",
-            "table", "tbody", "td", "tfoot", "th", "thead", "tr", "ul", "var",
-        ]).tag_attributes(hashmap![
-            "a" => hashset!["href"],
-            "img" => hashset!["src"],
-            "ol" => hashset!["start"],
-            "th" => hashset!["align", "colspan", "rowspan"],
-            "td" => hashset!["align", "colspan", "rowspan"],
-            "input" => hashset!["type", "checked"],
-        ]).allowed_classes(hashmap!["div" => hashset!["email-quoted-reply"]]);
-        builder
-    };
 }
 
 /// Combines information from GitHub and Homu to get a list of pull request information.
@@ -183,10 +161,6 @@ pub fn register_tera_filters(tera: &mut Tera) {
             .unwrap_or("")
             .to_owned();
         Ok(Value::String(last_component))
-    });
-    tera.register_filter("sanitize", |input, _| {
-        let unclean = try_get_value!("sanitize", "value", String, input);
-        Ok(Value::String(HTML_SANITIZER.clean(&unclean).to_string()))
     });
     tera.register_tester("starting_with", |value, mut params| {
         let prefix_value = params.swap_remove(0);

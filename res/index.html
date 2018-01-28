@@ -121,7 +121,7 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                         </p>
                         <div class="reply-body reply-body-{{ event.__typename }}">
                             {%- if event.bodyHTML is defined -%}
-                                {{ event.bodyHTML | safe | sanitize }}
+                                {{ event.bodyHTML | safe }}
                             {%- elif event.__typename == "CrossReferencedEvent" -%}
                                 Ref {{ event.source.__typename }} #{{ event.source.number }}:
                                 <a href="{{ event.source.url }}">{{ event.source.title }}</a>

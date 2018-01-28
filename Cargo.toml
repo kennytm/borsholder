@@ -15,7 +15,6 @@ is-it-maintained-open-issues = { repository = "kennytm/borsholder" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-ammonia = "1"
 antidote = "1"
 chrono = { version = "0.4", features = ["serde"] }
 env_logger = "0.5"

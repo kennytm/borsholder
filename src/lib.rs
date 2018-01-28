@@ -13,7 +13,6 @@
 
 #![cfg_attr(feature = "cargo-clippy", warn(warnings, clippy_pedantic))]
 
-extern crate ammonia;
 extern crate antidote;
 extern crate chrono;
 extern crate env_logger;
