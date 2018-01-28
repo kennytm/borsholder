@@ -49,15 +49,15 @@ pub struct Args {
     #[serde(skip_serializing)]
     pub proxy: Option<Url>,
 
-    /// The time interval to wait after a successful API request.
+    /// The time interval to wait after a successful GitHub API request.
     #[structopt(long = "refresh-interval",
-                help = "Number of seconds to wait between each API refresh",
+                help = "Number of seconds to wait between each GitHub API refresh",
                 default_value = "300", parse(try_from_str = "parse_duration"))]
     pub refresh_interval: Duration,
 
-    /// The time interval to wait after a failed API request.
+    /// The time interval to wait after a failed GitHub API request.
     #[structopt(long = "retry-interval",
-                help = "Number of seconds to wait for next retry when an API failed",
+                help = "Number of seconds to wait for next retry when a GitHub API failed",
                 default_value = "7", parse(try_from_str = "parse_duration"))]
     pub retry_interval: Duration,
 }

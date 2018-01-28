@@ -152,7 +152,6 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
     <p>
         Last sync:
         GitHub {{ m::rel_time(datetime=github_last_update) }},
-        Homu {{ m::rel_time(datetime=homu_last_update) }}.
         <a href="sync" target="_self">Sync immediately.</a>
     </p>
     <script>

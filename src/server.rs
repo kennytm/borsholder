@@ -58,14 +58,10 @@ pub fn serve(mut args: Args) -> Result<(), Error> {
     });
     let server_context = Arc::clone(&context);
     let github_context = Arc::clone(&context);
-    let homu_context = Arc::clone(&context);
 
     let github_thread = thread::Builder::new()
         .name("GitHub".to_owned())
         .spawn(move || load_from_github(&github_context))?;
-    let homu_thread = thread::Builder::new()
-        .name("Homu".to_owned())
-        .spawn(move || load_from_homu(&homu_context))?;
 
     let handler = Rc::new(Handler {
         tera: RefCell::new(tera),
@@ -80,7 +76,6 @@ pub fn serve(mut args: Args) -> Result<(), Error> {
     }
 
     github_thread.join().expect("GitHub thread is complete");
-    homu_thread.join().expect("Homu thread is complete");
 
     Ok(())
 }
@@ -117,8 +112,6 @@ struct RenderData<'a> {
     args: &'a Args,
     /// Last update time for GitHub.
     github_last_update: DateTime<Utc>,
-    /// Last update time for Homu.
-    homu_last_update: DateTime<Utc>,
 }
 
 impl Service for Handler {
@@ -182,8 +175,6 @@ lazy_static! {
 
     /// The cached GitHub API request result.
     static ref GITHUB_ENTRIES: Cache<Vec<::github::graphql::PullRequest>> = Cache::default();
-    /// The cached Homu queue request result.
-    static ref HOMU_ENTRIES: Cache<Vec<::homu::Entry>> = Cache::default();
 }
 
 impl Handler {
@@ -240,18 +231,17 @@ impl Handler {
     /// This method will *synchronously* download PR information from GitHub and Homu.
     fn render(&self) -> Result<String, Error> {
         let args = &self.context.args;
+        let homu = ::homu::query(&self.context.client, &args.homu_url)?;
 
         let github_guard = GITHUB_ENTRIES.lock();
-        let homu_guard = HOMU_ENTRIES.lock();
 
-        let prs = parse_prs(&github_guard.0, &homu_guard.0);
+        let prs = parse_prs(&github_guard.0, &homu);
         let stats = summarize_prs(prs.values());
         let data = RenderData {
             prs: &prs,
             stats,
             args,
             github_last_update: github_guard.1,
-            homu_last_update: homu_guard.1,
         };
 
         let body = self.tera
@@ -309,13 +299,6 @@ fn load_from_github(context: &Context) {
             &context.args.owner,
             &context.args.repository,
         )
-    });
-}
-
-/// Worker thread for loading data from Homu.
-fn load_from_homu(context: &Context) {
-    worker_thread(context, &HOMU_ENTRIES, || {
-        ::homu::query(&context.client, &context.args.homu_url)
     });
 }
 
