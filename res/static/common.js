@@ -88,6 +88,9 @@ var sorters = {
     number: function(a, b) {
         return b - a;
     },
+    complexity: function(a, b) {
+        return a - b;
+    },
 };
 function doSort() {
     var children = $prs.children;

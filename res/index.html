@@ -16,6 +16,7 @@
             <select id="sort">
                 <option value="priority">approval status</option>
                 <option value="update">recent update</option>
+                <option value="complexity">complexity</option>
             </select>
         </span>
         <span>
@@ -42,6 +43,7 @@
                 data-priority="{{ pr.status }}:{{ pr.priority }}:{{ number }}"
                 data-update="{{ update_at }}"
                 data-number="{{ number }}"
+                data-complexity="{{ (pr.additions + 1) * (pr.deletions + 1) }}"
                 data-filter="
 number:{{ number }}
 author:{{ pr.author }}
