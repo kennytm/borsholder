@@ -157,7 +157,7 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
     </p>
     <script>
         'use strict';
-        var HOMU_URL = '{{ args.homu_url | url_last_path_component }}';
+        var HOMU_URL = '{{ args.homu_url | safe | url_last_path_component }}';
         var CLIENT_ID = '{{ args.homu_client_id }}';
     </script>
     <script src="static/common.js?v=8"></script>
