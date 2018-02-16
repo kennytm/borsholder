@@ -89,7 +89,7 @@ var sorters = {
         return b - a;
     },
     complexity: function(a, b) {
-        return a - b;
+        return b - a;
     },
 };
 function doSort() {

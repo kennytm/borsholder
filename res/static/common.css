@@ -83,7 +83,7 @@ a:hover {
     background: #fff6f7; /* hsluv(0, 97.5, 97.5) */
 }
 .status-Reviewing {
-    background: #f8f8f8; /* hsluv(0, 0, 97.5) */
+    background: #fdfdfd;
 }
 .status-Success:hover {
     background: #e7f2ff; /* hsluv(240, 100, 95) */
