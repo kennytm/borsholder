@@ -17,6 +17,8 @@ pub struct Pr<'a> {
     author: &'a str,
     /// When the PR was opened.
     created_at: DateTime<Utc>,
+    /// Last update time of the PR.
+    updated_at: DateTime<Utc>,
     /// Whether the PR can be merged cleanly.
     mergeable: MergeableState,
     /// PR title.
@@ -58,6 +60,7 @@ impl<'a> Default for Pr<'a> {
         Self {
             author: "",
             created_at: UNIX_EPOCH.into(),
+            updated_at: UNIX_EPOCH.into(),
             mergeable: MergeableState::Unknown,
             title: "",
             labels: &[],
@@ -87,11 +90,11 @@ pub fn parse_prs<'a>(
             Pr {
                 author: &gh.author.login,
                 created_at: gh.created_at,
+                updated_at: gh.updated_at,
                 mergeable: gh.mergeable,
                 title: &gh.title,
                 labels: &gh.labels.nodes,
                 ci_status: commit.status.as_ref().map_or(&[], |s| &s.contexts),
-                timeline: &gh.timeline.nodes,
                 additions: gh.additions,
                 deletions: gh.deletions,
                 ..Pr::default()

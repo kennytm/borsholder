@@ -36,9 +36,7 @@
     <p id="loading-text">(Still loading, please wait…)</p>
     <ul id="queue">
         {%- for number, pr in prs -%}
-            {%- set last_event = pr.timeline | last -%}
-            {%- set update_at = m::event_time(event=last_event) -%}
-            {%- set update_user = m::event_user(event=last_event) -%}
+            {%- set update_at = pr.updated_at -%}
         <li id="pr-{{ number }}" class="status-{{ pr.status }}"
                 data-priority="{{ pr.status }}:{{ pr.priority }}:{{ number }}"
                 data-update="{{ update_at }}"
@@ -92,12 +90,7 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                 <span class="additions">+{{ pr.additions }}</span>/<span class="deletions">−{{ pr.deletions }}</span>
                 ::
                 <span class="comment-metadata">
-                    {%- set update_at_html = m::rel_time(datetime=update_at) -%}
-                    updated
-                    {{ m::event_url(event=last_event, args=args, number=number, html=update_at_html) }}
-                    {% if update_user -%}
-                        by {{ m::actor(username=update_user) }}
-                    {%- endif -%}
+                    updated {{ m::rel_time(datetime=update_at) }}
                 </span>
                 <div class="comment">
                     {%- for event in pr.timeline -%}

@@ -14,7 +14,6 @@ pub mod graphql {
     #![cfg_attr(feature = "cargo-clippy", allow(missing_docs_in_private_items))]
 
     use chrono::{DateTime, Utc};
-    use tera::Value;
 
     /// A generic GraphQL connection, which is the same as a vector in our use case.
     #[derive(Deserialize, Default)]
@@ -61,6 +60,7 @@ pub mod graphql {
     pub struct PullRequest {
         pub author: Actor,
         pub created_at: DateTime<Utc>,
+        pub updated_at: DateTime<Utc>,
         pub mergeable: MergeableState,
         pub number: u32,
         pub title: String,
@@ -68,7 +68,6 @@ pub mod graphql {
         pub deletions: u32,
         pub labels: Connection<Label>,
         pub commits: Connection<PullRequestCommit>,
-        pub timeline: Connection<Value>,
     }
 
     #[derive(Deserialize)]
