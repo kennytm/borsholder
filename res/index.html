@@ -143,11 +143,6 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
         </li>
         {%- endfor -%}
     </ul>
-    <p>
-        Last sync:
-        GitHub {{ m::rel_time(datetime=github_last_update) }},
-        <a href="sync" target="_self">Sync immediately.</a>
-    </p>
     <script>
         'use strict';
         var HOMU_URL = '{{ args.homu_url | safe | url_last_path_component }}';

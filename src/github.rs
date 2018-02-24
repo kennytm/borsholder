@@ -1,9 +1,11 @@
 //! GitHub API access.
 
 use failure::Error;
-use reqwest::Client;
+use reqwest::unstable::async::Client;
 use reqwest::header::{Authorization, Bearer, Headers, Raw};
 use std::str::from_utf8;
+use futures::future::Future;
+use futures::stream::{unfold, Stream};
 
 /// Types related to the main GraphQL query.
 ///
@@ -157,54 +159,111 @@ const GITHUB_ENDPOINT: &str = "https://api.github.com/graphql";
 /// The main GraphQL query.
 const QUERY: &str = include!("github.gql");
 
-/// Result of `query()`.
-pub struct PullRequests {
-    /// The list of PRs obtained in this query.
-    pub prs: Vec<graphql::PullRequest>,
-    /// ID of the next page to fetch, if any.
-    pub next: Option<String>,
+/// Pagination status for multi-page results (pull request list).
+enum PaginationState {
+    /// This is the first page. Used to initialize the requests.
+    First,
+    /// There are more pages after this request.
+    HasNext(String),
+    /// This is the last page.
+    Done,
+}
+
+impl PaginationState {
+    /// Whether the last page has been reached.
+    fn is_done(&self) -> bool {
+        match *self {
+            PaginationState::Done => true,
+            _ => false,
+        }
+    }
+
+    /// Extracts the cursor ID which can be used to load the next page.
+    fn as_after(&self) -> Option<&str> {
+        match *self {
+            PaginationState::HasNext(ref s) => Some(&**s),
+            _ => None,
+        }
+    }
 }
 
 /// Obtains the list of open pull requests and associated information from GitHub.
 pub fn query(
+    client: Client,
+    token: String,
+    owner: String,
+    repo: String,
+) -> Box<Future<Item = Vec<graphql::PullRequest>, Error = Error>> {
+    Box::new(
+        unfold(PaginationState::First, move |next_page| {
+            if next_page.is_done() {
+                None
+            } else {
+                Some(query_single_page(
+                    &client,
+                    &token,
+                    &owner,
+                    &repo,
+                    next_page.as_after(),
+                ))
+            }
+        }).concat2(),
+    )
+}
+
+/// Obtains a single page of open pull requests and associated information from GitHub.
+fn query_single_page(
     client: &Client,
     token: &str,
     owner: &str,
     repo: &str,
     after: Option<&str>,
-) -> Result<PullRequests, Error> {
+) -> Box<Future<Item = (Vec<graphql::PullRequest>, PaginationState), Error = Error>> {
     info!("Preparing to send GitHub request");
-    let mut response = client
-        .post(GITHUB_ENDPOINT)
-        .header(Authorization(Bearer {
-            token: token.to_owned(),
-        }))
-        .json(&Request {
-            query: QUERY,
-            variables: Variables { owner, repo, after },
-        })
-        .send()?
-        .error_for_status()?;
 
-    {
-        let headers = response.headers();
-        let rate_limit_remaining = fetch_rate_limit(headers, "X-RateLimit-Remaining");
-        let rate_limit_limit = fetch_rate_limit(headers, "X-RateLimit-Limit");
-        info!(
-            "GitHub rate limit: {}/{}",
-            rate_limit_remaining, rate_limit_limit
-        );
-    }
-
-    let reply = response.json::<graphql::Reply>()?;
-
-    let prs = reply.data.repository.pull_requests.nodes;
-    let next = match reply.data.repository.pull_requests.page_info {
-        graphql::PageInfo { has_next_page: true, end_cursor } => Some(end_cursor),
-        graphql::PageInfo { has_next_page: false, .. } => None,
-    };
-    info!("Obtained {} PRs from GitHub, has next page = {}", prs.len(), next.is_some());
-    Ok(PullRequests { prs, next })
+    Box::new(
+        client
+            .post(GITHUB_ENDPOINT)
+            .header(Authorization(Bearer {
+                token: token.to_owned(),
+            }))
+            .json(&Request {
+                query: QUERY,
+                variables: Variables { owner, repo, after },
+            })
+            .send()
+            .and_then(|response| response.error_for_status())
+            .inspect(|response| {
+                let headers = response.headers();
+                let rate_limit_remaining = fetch_rate_limit(headers, "X-RateLimit-Remaining");
+                let rate_limit_limit = fetch_rate_limit(headers, "X-RateLimit-Limit");
+                info!(
+                    "GitHub rate limit: {}/{}",
+                    rate_limit_remaining, rate_limit_limit
+                );
+            })
+            .and_then(|mut response| response.json::<graphql::Reply>())
+            .map_err(Error::from)
+            .and_then(|reply| {
+                let prs = reply.data.repository.pull_requests.nodes;
+                let next_page = match reply.data.repository.pull_requests.page_info {
+                    graphql::PageInfo {
+                        has_next_page: true,
+                        end_cursor,
+                    } => PaginationState::HasNext(end_cursor),
+                    graphql::PageInfo {
+                        has_next_page: false,
+                        ..
+                    } => PaginationState::Done,
+                };
+                info!(
+                    "Obtained {} PRs from GitHub, has next page = {}",
+                    prs.len(),
+                    !next_page.is_done()
+                );
+                Ok((prs, next_page))
+            }),
+    )
 }
 
 /// Fetch rate-limit related number from the GitHub response.

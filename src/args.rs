@@ -3,9 +3,7 @@
 use reqwest::Url;
 use serde::Serializer;
 use std::net::SocketAddr;
-use std::num::ParseIntError;
 use std::path::PathBuf;
-use std::time::Duration;
 
 /// Stores the command line argument.
 #[derive(Debug, StructOpt, Serialize)]
@@ -48,32 +46,9 @@ pub struct Args {
     #[structopt(short = "p", long = "proxy", help = "HTTP(S) proxy server")]
     #[serde(skip_serializing)]
     pub proxy: Option<Url>,
-
-    /// The time interval to wait after a completely successful GitHub API request.
-    #[structopt(long = "refresh-interval",
-                help = "Number of seconds to wait between each GitHub API refresh",
-                default_value = "300", parse(try_from_str = "parse_duration"))]
-    pub refresh_interval: Duration,
-
-    /// The time interval to wait to fetch a new page from GitHub.
-    #[structopt(long = "next-page-interval",
-                help = "Number of seconds to wait to fetch a new page from GitHub",
-                default_value = "1", parse(try_from_str = "parse_duration"))]
-    pub next_page_interval: Duration,
-
-    /// The time interval to wait after a failed GitHub API request.
-    #[structopt(long = "retry-interval",
-                help = "Number of seconds to wait for next retry when a GitHub API failed",
-                default_value = "7", parse(try_from_str = "parse_duration"))]
-    pub retry_interval: Duration,
 }
 
 /// Serializes a URL using serde.
 fn serialize_url<S: Serializer>(url: &Url, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(url.as_str())
-}
-
-/// Parses number of seconds into duration.
-fn parse_duration(input: &str) -> Result<Duration, ParseIntError> {
-    Ok(Duration::from_secs(input.parse()?))
 }

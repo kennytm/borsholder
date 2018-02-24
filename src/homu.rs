@@ -3,7 +3,10 @@
 use failure::{err_msg, Error, ResultExt};
 use kuchiki::parse_html;
 use kuchiki::traits::TendrilSink;
-use reqwest::{Client, Url};
+use reqwest::unstable::async::Client;
+use reqwest::Url;
+use futures::{Future, Stream};
+use tendril::Tendril;
 
 /// An entry in the Homu queue.
 pub struct Entry {
@@ -43,49 +46,63 @@ impl Default for Status {
 }
 
 /// Obtains the list of pull requests and associated information from Homu queue.
-pub fn query(client: &Client, url: &Url) -> Result<Vec<Entry>, Error> {
+pub fn query(client: &Client, url: &Url) -> Box<Future<Item = Vec<Entry>, Error = Error>> {
     info!("Preparing to send Homu request");
 
-    let mut resp = client.get(url.clone()).send()?.error_for_status()?;
-    let doc = parse_html().from_utf8().read_from(&mut resp)?;
-
-    let mut res = Vec::new();
-    for tr in doc.select("#queue > tbody > tr")
-        .expect("well-formed CSS query")
-    {
-        let mut tds = tr.as_node()
-            .children()
-            .filter_map(|td| {
-                if let Some(elem) = td.as_element() {
-                    if elem.name.expanded() == expanded_name!(html "td") {
-                        return Some(td.text_contents());
-                    }
-                }
-                None
+    Box::new(
+        client
+            .get(url.clone())
+            .send()
+            .and_then(|response| response.error_for_status())
+            .and_then(|response| {
+                response
+                    .into_body()
+                    .fold(parse_html().from_utf8(), |mut parser, chunk| {
+                        parser.process(Tendril::from_slice(&*chunk));
+                        Ok::<_, ::reqwest::Error>(parser)
+                    })
             })
-            .collect::<Vec<_>>();
+            .map(|parser| parser.finish())
+            .map_err(Error::from)
+            .and_then(|doc| {
+                let mut res = Vec::new();
+                for tr in doc.select("#queue > tbody > tr")
+                    .expect("well-formed CSS query")
+                {
+                    let mut tds = tr.as_node()
+                        .children()
+                        .filter_map(|td| {
+                            if let Some(elem) = td.as_element() {
+                                if elem.name.expanded() == expanded_name!(html "td") {
+                                    return Some(td.text_contents());
+                                }
+                            }
+                            None
+                        })
+                        .collect::<Vec<_>>();
 
-        if tds.len() != 10 {
-            return Err(err_msg("Homu queue structure probably changed. Aborting."));
-        }
+                    if tds.len() != 10 {
+                        return Err(err_msg("Homu queue structure probably changed. Aborting."));
+                    }
 
-        let number = tds[2].parse::<u32>().context("invalid PR number")?;
-        let (status, is_trying) = parse_status(&tds[3]);
-        let priority = parse_priority(&tds[9]);
-        let title = tds.swap_remove(5);
+                    let number = tds[2].parse::<u32>().context("invalid PR number")?;
+                    let (status, is_trying) = parse_status(&tds[3]);
+                    let priority = parse_priority(&tds[9]);
+                    let title = tds.swap_remove(5);
 
-        res.push(Entry {
-            number,
-            title,
-            status,
-            is_trying,
-            priority,
-        });
-    }
+                    res.push(Entry {
+                        number,
+                        title,
+                        status,
+                        is_trying,
+                        priority,
+                    });
+                }
 
-    info!("Obtained {} PRs from Homu", res.len());
-
-    Ok(res)
+                info!("Obtained {} PRs from Homu", res.len());
+                Ok(res)
+            }),
+    )
 }
 
 /// Parses the rendered approval status string into the status/is-try pair.

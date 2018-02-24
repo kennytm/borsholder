@@ -13,7 +13,6 @@
 
 #![cfg_attr(feature = "cargo-clippy", warn(warnings, clippy_pedantic))]
 
-extern crate antidote;
 extern crate chrono;
 extern crate env_logger;
 extern crate failure;
@@ -40,8 +39,10 @@ extern crate serde_derive;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
+extern crate tendril;
 #[macro_use]
 extern crate tera;
+extern crate tokio_core;
 
 mod args;
 mod github;

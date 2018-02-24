@@ -1,10 +1,9 @@
 //! Local server of borsholder.
 
-use antidote::{Condvar, Mutex, MutexGuard};
 use args::Args;
-use chrono::{DateTime, Utc};
 use failure::Error;
-use futures::future::{ok, FutureResult};
+use futures::Stream;
+use futures::future::{empty, result, Future};
 use hyper::{self, StatusCode};
 use hyper::header::{AcceptEncoding, CacheControl, Connection, ConnectionOption, ContentEncoding,
                     ContentType, Encoding, Headers};
@@ -14,17 +13,17 @@ use libflate::gzip::Encoder;
 use mime::{Mime, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
-use reqwest::{Client, Proxy};
+use reqwest::unstable::async::Client;
+use reqwest::Proxy;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{self, Read};
 use std::rc::Rc;
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::Duration;
 use tera::Tera;
+use tokio_core::reactor::Core;
 
 /// Serves the borsholder web page configured according to `args`.
 ///
@@ -35,6 +34,9 @@ pub fn serve(mut args: Args) -> Result<(), Error> {
     let mut tera = Tera::new(&tera_pattern).map_err(TeraFailure::from)?;
     register_tera_filters(&mut tera);
 
+    let mut core = Core::new()?;
+    let handle = core.handle();
+
     let mut builder = Client::builder();
     if let Some(proxy) = args.proxy.take() {
         builder.proxy(Proxy::all(proxy)?);
@@ -44,124 +46,79 @@ pub fn serve(mut args: Args) -> Result<(), Error> {
     let client = builder
         .timeout(Duration::from_secs(120))
         .default_headers(default_headers)
-        .build()?;
+        .build(&handle)?;
 
     let address = args.address;
-    let is_server_dead = Mutex::new(false);
-    let is_server_dead_condition = Condvar::new();
-
-    let context = Arc::new(Context {
-        client,
-        args,
-        is_server_dead,
-        is_server_dead_condition,
-    });
-    let server_context = Arc::clone(&context);
-    let github_context = Arc::clone(&context);
-
-    let github_thread = thread::Builder::new()
-        .name("GitHub".to_owned())
-        .spawn(move || load_from_github(&github_context))?;
-
     let handler = Rc::new(Handler {
-        tera: RefCell::new(tera),
-        context: server_context,
+        tera: Rc::new(RefCell::new(tera)),
+        client,
+        args: Rc::new(args),
     });
-    let server = Http::new().bind(&address, move || Ok(Rc::clone(&handler)))?;
-    server.run()?;
 
-    {
-        *context.is_server_dead.lock() = true;
-        context.is_server_dead_condition.notify_all();
-    }
+    let serve = Http::new().serve_addr_handle(&address, &handle, move || Ok(Rc::clone(&handler)))?;
 
-    github_thread.join().expect("GitHub thread is complete");
+    let conn_handle = handle.clone();
+    handle.spawn(
+        serve
+            .for_each(move |conn| {
+                conn_handle.spawn(
+                    conn.map(|_| ())
+                        .map_err(|e| debug!("server error: {}", e)),
+                );
+                Ok(())
+            })
+            .map_err(|_| ()),
+    );
 
+    core.run(empty::<(), Error>())?;
     Ok(())
-}
-
-/// Shared context between the web server and the worker threads.
-struct Context {
-    /// The reqwest client for making API requests.
-    client: Client,
-    /// The command line arguments.
-    args: Args,
-    /// Whether the server is still running. When this value is false, all
-    /// worker threads should stop as soon as possible.
-    is_server_dead: Mutex<bool>,
-    /// The condition variable operating on the `is_server_dead` mutex.
-    is_server_dead_condition: Condvar,
 }
 
 /// Request handler of the borsholder server.
 struct Handler {
     /// The Tera template engine.
-    tera: RefCell<Tera>,
-    /// Shared context with the worker threads.
-    context: Arc<Context>,
+    tera: Rc<RefCell<Tera>>,
+    /// The reqwest client for making API requests.
+    client: Client,
+    /// The command line arguments.
+    args: Rc<Args>,
 }
 
 /// Packaged JSON-like object to be sent to Tera for rendering.
 #[derive(Serialize)]
-struct RenderData<'a> {
+struct RenderData {
     /// The list of PRs.
-    prs: &'a HashMap<u32, Pr<'a>>,
+    prs: HashMap<u32, Pr>,
     /// PR statistics.
     stats: PrStats,
     /// The command line arguments.
-    args: &'a Args,
-    /// Last update time for GitHub.
-    github_last_update: DateTime<Utc>,
+    args: Rc<Args>,
 }
 
 impl Service for Handler {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-    type Future = FutureResult<Response, hyper::Error>;
+    type Future = Box<Future<Item = Response, Error = hyper::Error>>;
 
     fn call(&self, request: Request) -> Self::Future {
         let uri = request.uri();
         debug!("Received request to {}", uri);
 
-        let mut response = Response::new();
-
         let encodings = request.headers().get::<AcceptEncoding>();
         let can_gzip = encodings.map_or(false, |ae| ae.iter().any(|q| q.item == Encoding::Gzip));
 
-        if let Err(e) = self.serve(uri.path(), &mut response, can_gzip) {
-            response.set_status(StatusCode::InternalServerError);
-            response.headers_mut().set(ContentType::plaintext());
-            response.set_body(e.to_string());
-        }
-
-        debug!("Responding with {}", response.status());
-        ok(response)
-    }
-}
-
-/// Represent a cached value that is shared across threads, containing the last
-/// update time.
-struct Cache<T>(Mutex<(T, DateTime<Utc>)>);
-
-impl<T: Default> Default for Cache<T> {
-    fn default() -> Self {
-        Cache(Mutex::new((T::default(), UNIX_EPOCH.into())))
-    }
-}
-
-impl<T> Cache<T> {
-    /// Modifies a value in the cache.
-    fn modify<F: FnOnce(&mut T)>(&self, modifier: F) {
-        let now = Utc::now();
-        let mut guard = self.0.lock();
-        modifier(&mut guard.0);
-        guard.1 = now;
-    }
-
-    /// Gets the value and last update time from the cache.
-    fn lock(&self) -> MutexGuard<(T, DateTime<Utc>)> {
-        self.0.lock()
+        Box::new(
+            self.serve(uri.path(), can_gzip)
+                .or_else(|e| {
+                    let mut response = Response::new();
+                    response.set_status(StatusCode::InternalServerError);
+                    response.headers_mut().set(ContentType::plaintext());
+                    response.set_body(e.to_string());
+                    Ok(response)
+                })
+                .inspect(|response| debug!("Responding with {}", response.status())),
+        )
     }
 }
 
@@ -174,21 +131,30 @@ lazy_static! {
         "js" => TEXT_JAVASCRIPT,
         "png" => IMAGE_PNG,
     ];
-
-    /// The cached GitHub API request result.
-    static ref GITHUB_ENTRIES: Cache<Vec<::github::graphql::PullRequest>> = Cache::default();
 }
 
 impl Handler {
     /// Serves a response from the URL.
-    fn serve(&self, path: &str, response: &mut Response, can_gzip: bool) -> Result<(), Error> {
+    fn serve(&self, path: &str, can_gzip: bool) -> Box<Future<Item = Response, Error = Error>> {
         match path {
             "/" => {
-                let body = self.render()?;
-                response.set_status(StatusCode::Ok);
-                response.headers_mut().set(ContentType::html());
-                set_response_body(response, body.as_bytes(), can_gzip)?;
+                let future = self.render().and_then(move |body| {
+                    let mut response = Response::new();
+                    response.set_status(StatusCode::Ok);
+                    response.headers_mut().set(ContentType::html());
+                    set_response_body(&mut response, body.as_bytes(), can_gzip)?;
+                    Ok(response)
+                });
+                Box::new(future)
             }
+            _ => Box::new(result(self.serve_sync(path, can_gzip))),
+        }
+    }
+
+    /// Serves a response which doesn't require asynchronous requests.
+    fn serve_sync(&self, path: &str, can_gzip: bool) -> Result<Response, Error> {
+        let mut response = Response::new();
+        match path {
             "/reloadTemplates" => {
                 self.reload_templates()?;
                 response.set_status(StatusCode::Ok);
@@ -196,7 +162,6 @@ impl Handler {
                 response.set_body("reloaded");
             }
             "/sync" => {
-                self.context.is_server_dead_condition.notify_all();
                 response.set_status(StatusCode::Ok);
                 response.headers_mut().set(ContentType::plaintext());
                 response.set_body("synchronization request sent, go back and refresh.");
@@ -204,7 +169,7 @@ impl Handler {
             _ => {
                 response.set_status(StatusCode::NotFound);
                 if SAFE_PATH_RE.is_match(path.as_bytes()) {
-                    let path = self.context.args.templates.join(&path[1..]);
+                    let path = self.args.templates.join(&path[1..]);
                     if path.exists() {
                         let mime = path.extension()
                             .and_then(OsStr::to_str)
@@ -220,37 +185,41 @@ impl Handler {
                         }
 
                         let file = File::open(path)?;
-                        set_response_body(response, file, can_gzip)?;
+                        set_response_body(&mut response, file, can_gzip)?;
                     }
                 }
             }
         }
-        Ok(())
+        Ok(response)
     }
 
     /// Renders the web page.
     ///
-    /// This method will *synchronously* download PR information from GitHub and Homu.
-    fn render(&self) -> Result<String, Error> {
-        let args = &self.context.args;
-        let homu = ::homu::query(&self.context.client, &args.homu_url)?;
+    /// This method will *asynchronously* download PR information from GitHub and Homu.
+    fn render(&self) -> Box<Future<Item = String, Error = Error>> {
+        let args = Rc::clone(&self.args);
+        let tera = Rc::clone(&self.tera);
 
-        let github_guard = GITHUB_ENTRIES.lock();
-
-        let prs = parse_prs(&github_guard.0, &homu);
-        let stats = summarize_prs(prs.values());
-        let data = RenderData {
-            prs: &prs,
-            stats,
-            args,
-            github_last_update: github_guard.1,
-        };
-
-        let body = self.tera
-            .borrow()
-            .render("index.html", &data)
-            .map_err(TeraFailure::from)?;
-        Ok(body)
+        let homu_future = ::homu::query(&self.client, &args.homu_url);
+        let github_future = ::github::query(
+            self.client.clone(),
+            args.token.clone(),
+            args.owner.clone(),
+            args.repository.clone(),
+        );
+        Box::new(
+            homu_future
+                .join(github_future)
+                .and_then(move |(homu, github)| {
+                    let prs = parse_prs(github, homu);
+                    let stats = summarize_prs(prs.values());
+                    let data = RenderData { prs, stats, args };
+                    let body = tera.borrow()
+                        .render("index.html", &data)
+                        .map_err(TeraFailure::from)?;
+                    Ok(body)
+                }),
+        )
     }
 
     /// Reloads the Tera template.
@@ -258,51 +227,6 @@ impl Handler {
         let mut tera = self.tera.borrow_mut();
         tera.full_reload().map_err(TeraFailure::from)?;
         Ok(())
-    }
-}
-
-/// Worker thread for loading data from GitHub.
-fn load_from_github(context: &Context) {
-    let mut next: Option<String> = None;
-    loop {
-        let query_result = ::github::query(
-            &context.client,
-            &context.args.token,
-            &context.args.owner,
-            &context.args.repository,
-            next.as_ref().map(|s| &**s),
-        );
-        let sleep_duration = match query_result {
-            Ok(prs) => {
-                let is_continuation = next.is_some();
-                next = prs.next;
-                let mut prs = prs.prs;
-                GITHUB_ENTRIES.modify(|e| {
-                    if is_continuation {
-                        e.append(&mut prs);
-                    } else {
-                        *e = prs;
-                    }
-                });
-                if next.is_some() {
-                    context.args.next_page_interval
-                } else {
-                    context.args.refresh_interval
-                }
-            }
-            Err(e) => {
-                debug!("Query for GitHub failed: {}", e);
-                context.args.retry_interval
-            }
-        };
-
-        let guard = context.is_server_dead.lock();
-        if *guard {
-            break;
-        }
-        context
-            .is_server_dead_condition
-            .wait_timeout(guard, sleep_duration);
     }
 }
 

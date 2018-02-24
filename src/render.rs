@@ -12,9 +12,9 @@ use tera::{self, Tera, Value};
 
 /// Information of a pull request.
 #[derive(Serialize)]
-pub struct Pr<'a> {
+pub struct Pr {
     /// The author of the PR (GitHub username).
-    author: &'a str,
+    author: String,
     /// When the PR was opened.
     created_at: DateTime<Utc>,
     /// Last update time of the PR.
@@ -22,15 +22,15 @@ pub struct Pr<'a> {
     /// Whether the PR can be merged cleanly.
     mergeable: MergeableState,
     /// PR title.
-    title: &'a str,
+    title: String,
     /// Labels applied to the PR.
-    labels: &'a [Label],
+    labels: Vec<Label>,
     /// When the last commit of this PR was committed.
     committed_at: DateTime<Utc>,
     /// CI status of the last commit.
-    ci_status: &'a [StatusContext],
+    ci_status: Vec<StatusContext>,
     /// Recent actions performed on the PR.
-    timeline: &'a [Value],
+    timeline: Vec<Value>,
     /// Approval status.
     status: Status,
     /// Whether the approval status applies to a "try" run.
@@ -55,18 +55,18 @@ pub struct PrStats {
 }
 
 // Cannot derive default since it is not implemented for DateTime.
-impl<'a> Default for Pr<'a> {
+impl Default for Pr {
     fn default() -> Self {
         Self {
-            author: "",
+            author: String::new(),
             created_at: UNIX_EPOCH.into(),
             updated_at: UNIX_EPOCH.into(),
             mergeable: MergeableState::Unknown,
-            title: "",
-            labels: &[],
+            title: String::new(),
+            labels: Vec::new(),
             committed_at: UNIX_EPOCH.into(),
-            ci_status: &[],
-            timeline: &[],
+            ci_status: Vec::new(),
+            timeline: Vec::new(),
             status: Status::Reviewing,
             is_trying: false,
             priority: 0,
@@ -77,24 +77,21 @@ impl<'a> Default for Pr<'a> {
 }
 
 /// Combines information from GitHub and Homu to get a list of pull request information.
-pub fn parse_prs<'a>(
-    github_entries: &'a [PullRequest],
-    homu_entries: &'a [Entry],
-) -> HashMap<u32, Pr<'a>> {
+pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> HashMap<u32, Pr> {
     let mut prs = HashMap::new();
 
-    for gh in github_entries {
-        let commit = &gh.commits.nodes[0].commit;
+    for mut gh in github_entries {
+        let commit = gh.commits.nodes.swap_remove(0).commit;
         prs.insert(
             gh.number,
             Pr {
-                author: &gh.author.login,
+                author: gh.author.login,
                 created_at: gh.created_at,
                 updated_at: gh.updated_at,
                 mergeable: gh.mergeable,
-                title: &gh.title,
-                labels: &gh.labels.nodes,
-                ci_status: commit.status.as_ref().map_or(&[], |s| &s.contexts),
+                title: gh.title,
+                labels: gh.labels.nodes,
+                ci_status: commit.status.map_or_else(Vec::new, |s| s.contexts),
                 additions: gh.additions,
                 deletions: gh.deletions,
                 ..Pr::default()
@@ -103,8 +100,9 @@ pub fn parse_prs<'a>(
     }
 
     for h in homu_entries {
-        let pr = prs.entry(h.number).or_insert_with(|| Pr {
-            title: &h.title,
+        let title = h.title;
+        let pr = prs.entry(h.number).or_insert_with(move || Pr {
+            title,
             ..Pr::default()
         });
         pr.status = h.status;
@@ -116,7 +114,7 @@ pub fn parse_prs<'a>(
 }
 
 /// Reads in an iterator of PR references, and produces statistics about them.
-pub fn summarize_prs<'b, 'a: 'b, I: IntoIterator<Item = &'b Pr<'a>>>(prs: I) -> PrStats {
+pub fn summarize_prs<'b, I: IntoIterator<Item = &'b Pr>>(prs: I) -> PrStats {
     let mut stats = PrStats::default();
     for pr in prs {
         stats.count += 1;
