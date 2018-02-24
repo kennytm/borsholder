@@ -151,10 +151,12 @@ impl<T: Default> Default for Cache<T> {
 }
 
 impl<T> Cache<T> {
-    /// Sets a value to the cache.
-    fn set(&self, value: T) {
+    /// Modifies a value in the cache.
+    fn modify<F: FnOnce(&mut T)>(&self, modifier: F) {
         let now = Utc::now();
-        *self.0.lock() = (value, now);
+        let mut guard = self.0.lock();
+        modifier(&mut guard.0);
+        guard.1 = now;
     }
 
     /// Gets the value and last update time from the cache.
@@ -259,23 +261,37 @@ impl Handler {
     }
 }
 
-/// Common routine for a background worker thread.
-///
-/// The `query` function will be executed periodically. On success, it will
-/// write the result into the `output` cache.
-fn worker_thread<T, F: Fn() -> Result<T, Error>>(context: &Context, output: &Cache<T>, query: F) {
+/// Worker thread for loading data from GitHub.
+fn load_from_github(context: &Context) {
+    let mut next: Option<String> = None;
     loop {
-        let sleep_duration = match query() {
-            Ok(entries) => {
-                output.set(entries);
-                context.args.refresh_interval
+        let query_result = ::github::query(
+            &context.client,
+            &context.args.token,
+            &context.args.owner,
+            &context.args.repository,
+            next.as_ref().map(|s| &**s),
+        );
+        let sleep_duration = match query_result {
+            Ok(prs) => {
+                let is_continuation = next.is_some();
+                next = prs.next;
+                let mut prs = prs.prs;
+                GITHUB_ENTRIES.modify(|e| {
+                    if is_continuation {
+                        e.append(&mut prs);
+                    } else {
+                        *e = prs;
+                    }
+                });
+                if next.is_some() {
+                    context.args.next_page_interval
+                } else {
+                    context.args.refresh_interval
+                }
             }
             Err(e) => {
-                debug!(
-                    "Query for {} failed: {}",
-                    thread::current().name().unwrap_or("<unnamed>"),
-                    e
-                );
+                debug!("Query for GitHub failed: {}", e);
                 context.args.retry_interval
             }
         };
@@ -288,18 +304,6 @@ fn worker_thread<T, F: Fn() -> Result<T, Error>>(context: &Context, output: &Cac
             .is_server_dead_condition
             .wait_timeout(guard, sleep_duration);
     }
-}
-
-/// Worker thread for loading data from GitHub.
-fn load_from_github(context: &Context) {
-    worker_thread(context, &GITHUB_ENTRIES, || {
-        ::github::query(
-            &context.client,
-            &context.args.token,
-            &context.args.owner,
-            &context.args.repository,
-        )
-    });
 }
 
 /// Sets the response's body with optional compression.

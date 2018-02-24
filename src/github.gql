@@ -39,9 +39,13 @@ fragment ReferencedSubject on ReferencedSubject {
   }
 }
 
-query ($owner: String!, $repo: String!) {
+query ($owner: String!, $repo: String!, $after: String) {
   repository(owner: $owner, name: $repo) {
-    pullRequests(first: 100, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
+    pullRequests(first: 100, after: $after, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
       nodes {
         author {
           login

@@ -17,10 +17,24 @@ pub mod graphql {
     use tera::Value;
 
     /// A generic GraphQL connection, which is the same as a vector in our use case.
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Default)]
+    #[serde(rename_all = "camelCase")]
     pub struct Connection<T> {
         /// List of nodes in this connection.
         pub nodes: Vec<T>,
+        /// Paging information about this connection.
+        #[serde(default)]
+        pub page_info: PageInfo,
+    }
+
+    /// Paging information about a GraphQL connection.
+    #[derive(Deserialize, Default)]
+    #[serde(rename_all = "camelCase")]
+    pub struct PageInfo {
+        /// The cursor beyond the end of all data presented in this connection.
+        pub end_cursor: String,
+        /// Whether a new page exists.
+        pub has_next_page: bool,
     }
 
     /// The reply of a GraphQL query.
@@ -134,6 +148,8 @@ struct Variables<'variables> {
     owner: &'variables str,
     /// Name of the repository.
     repo: &'variables str,
+    /// Only read the content after
+    after: Option<&'variables str>,
 }
 
 /// URL to send the GraphQL requests.
@@ -142,13 +158,22 @@ const GITHUB_ENDPOINT: &str = "https://api.github.com/graphql";
 /// The main GraphQL query.
 const QUERY: &str = include!("github.gql");
 
+/// Result of `query()`.
+pub struct PullRequests {
+    /// The list of PRs obtained in this query.
+    pub prs: Vec<graphql::PullRequest>,
+    /// ID of the next page to fetch, if any.
+    pub next: Option<String>,
+}
+
 /// Obtains the list of open pull requests and associated information from GitHub.
 pub fn query(
     client: &Client,
     token: &str,
     owner: &str,
     repo: &str,
-) -> Result<Vec<graphql::PullRequest>, Error> {
+    after: Option<&str>,
+) -> Result<PullRequests, Error> {
     info!("Preparing to send GitHub request");
     let mut response = client
         .post(GITHUB_ENDPOINT)
@@ -157,7 +182,7 @@ pub fn query(
         }))
         .json(&Request {
             query: QUERY,
-            variables: Variables { owner, repo },
+            variables: Variables { owner, repo, after },
         })
         .send()?
         .error_for_status()?;
@@ -175,8 +200,12 @@ pub fn query(
     let reply = response.json::<graphql::Reply>()?;
 
     let prs = reply.data.repository.pull_requests.nodes;
-    info!("Obtained {} PRs from GitHub", prs.len());
-    Ok(prs)
+    let next = match reply.data.repository.pull_requests.page_info {
+        graphql::PageInfo { has_next_page: true, end_cursor } => Some(end_cursor),
+        graphql::PageInfo { has_next_page: false, .. } => None,
+    };
+    info!("Obtained {} PRs from GitHub, has next page = {}", prs.len(), next.is_some());
+    Ok(PullRequests { prs, next })
 }
 
 /// Fetch rate-limit related number from the GitHub response.
