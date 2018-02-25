@@ -10,7 +10,7 @@ use hyper::header::{AcceptEncoding, CacheControl, Connection, ConnectionOption, 
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
 use libflate::gzip::Encoder;
-use mime::{Mime, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
+use mime::{Mime, TEXT_HTML_UTF_8, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
 use reqwest::unstable::async::Client;
@@ -21,8 +21,9 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{self, Read};
 use std::rc::Rc;
+use std::str::from_utf8;
 use std::time::Duration;
-use tera::Tera;
+use tera::{Tera, Value};
 use tokio_core::reactor::Core;
 
 /// Serves the borsholder web page configured according to `args`.
@@ -61,10 +62,7 @@ pub fn serve(mut args: Args) -> Result<(), Error> {
     handle.spawn(
         serve
             .for_each(move |conn| {
-                conn_handle.spawn(
-                    conn.map(|_| ())
-                        .map_err(|e| debug!("server error: {}", e)),
-                );
+                conn_handle.spawn(conn.map(|_| ()).map_err(|e| debug!("server error: {}", e)));
                 Ok(())
             })
             .map_err(|_| ()),
@@ -84,7 +82,7 @@ struct Handler {
     args: Rc<Args>,
 }
 
-/// Packaged JSON-like object to be sent to Tera for rendering.
+/// Packaged JSON-like object to be sent to Tera for rendering the main page.
 #[derive(Serialize)]
 struct RenderData {
     /// The list of PRs.
@@ -93,6 +91,13 @@ struct RenderData {
     stats: PrStats,
     /// The command line arguments.
     args: Rc<Args>,
+}
+
+/// Packaged JSON-like object to be sent to Tera for rendering timeline.
+#[derive(Serialize)]
+struct TimelineRenderData {
+    /// The timeline itself.
+    timeline: Vec<Value>,
 }
 
 impl Service for Handler {
@@ -125,6 +130,10 @@ impl Service for Handler {
 lazy_static! {
     /// The regex which represents path can be used for static resource.
     static ref SAFE_PATH_RE: Regex = Regex::new(r"^/static/[^\\/]+$").expect("safe path regex");
+
+    /// The regex which represents the PR timeline path.
+    static ref TIMELINE_PATH_RE: Regex = Regex::new(r"^/timeline/([0-9]+)$").expect("timeline path regex");
+
     /// A hash map of file extension to their media types.
     static ref KNOWN_CONTENT_TYPES: HashMap<&'static str, Mime> = hashmap![
         "css" => TEXT_CSS,
@@ -137,17 +146,24 @@ impl Handler {
     /// Serves a response from the URL.
     fn serve(&self, path: &str, can_gzip: bool) -> Box<Future<Item = Response, Error = Error>> {
         match path {
-            "/" => {
-                let future = self.render().and_then(move |body| {
-                    let mut response = Response::new();
-                    response.set_status(StatusCode::Ok);
-                    response.headers_mut().set(ContentType::html());
-                    set_response_body(&mut response, body.as_bytes(), can_gzip)?;
-                    Ok(response)
-                });
-                Box::new(future)
+            "/" => Box::new(
+                self.render()
+                    .and_then(move |body| html_response(&body, can_gzip)),
+            ),
+            _ => {
+                if let Some(captures) = TIMELINE_PATH_RE.captures(path.as_bytes()) {
+                    let number = from_utf8(captures.get(1).expect("PR number").as_bytes())
+                        .expect("PR number")
+                        .parse()
+                        .expect("PR number");
+                    Box::new(
+                        self.render_timeline(number)
+                            .and_then(move |body| html_response(&body, can_gzip)),
+                    )
+                } else {
+                    Box::new(result(self.serve_sync(path, can_gzip)))
+                }
             }
-            _ => Box::new(result(self.serve_sync(path, can_gzip))),
         }
     }
 
@@ -222,12 +238,41 @@ impl Handler {
         )
     }
 
+    /// Renders the timeline HTML fragment of a PR.
+    fn render_timeline(&self, number: u32) -> Box<Future<Item = String, Error = Error>> {
+        let args = &self.args;
+        let tera = Rc::clone(&self.tera);
+        Box::new(
+            ::timeline::query(
+                &self.client,
+                &args.token,
+                &args.owner,
+                &args.repository,
+                number,
+            ).and_then(move |timeline| {
+                let body = tera.borrow()
+                    .render("timeline.html", &TimelineRenderData { timeline })
+                    .map_err(TeraFailure::from)?;
+                Ok(body)
+            }),
+        )
+    }
+
     /// Reloads the Tera template.
     fn reload_templates(&self) -> Result<(), Error> {
         let mut tera = self.tera.borrow_mut();
         tera.full_reload().map_err(TeraFailure::from)?;
         Ok(())
     }
+}
+
+/// Converts an HTML body string into a hyper response.
+fn html_response(body: &str, can_gzip: bool) -> Result<Response, Error> {
+    let mut response = Response::new();
+    response.set_status(StatusCode::Ok);
+    response.headers_mut().set(ContentType(TEXT_HTML_UTF_8));
+    set_response_body(&mut response, body.as_bytes(), can_gzip)?;
+    Ok(response)
 }
 
 /// Sets the response's body with optional compression.

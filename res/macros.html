@@ -87,11 +87,9 @@
     {%- endif -%}
 {%- endmacro event_user -%}
 
-{%- macro event_url(event, args, number, html) -%}
+{%- macro event_url(event, html) -%}
     {%- if event.url is defined and event.__typename != "Commit" -%}
         <a href="{{ event.url }}">{{ html | safe }}</a>
-    {%- elif event.databaseId is defined -%}
-        <a href="https://github.com/{{ args.owner }}/{{ args.repository }}/pull/{{ number }}#issuecomment-{{ event.databaseId }}">{{ html | safe }}</a>
     {%- else -%}
         {{ html | safe }}
     {%- endif -%}

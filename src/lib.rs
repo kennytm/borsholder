@@ -46,6 +46,7 @@ extern crate tokio_core;
 
 mod args;
 mod github;
+mod timeline;
 mod homu;
 mod render;
 mod server;

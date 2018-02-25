@@ -6,6 +6,8 @@ use reqwest::header::{Authorization, Bearer, Headers, Raw};
 use std::str::from_utf8;
 use futures::future::Future;
 use futures::stream::{unfold, Stream};
+use serde::ser::Serialize;
+use serde::de::DeserializeOwned;
 
 /// Types related to the main GraphQL query.
 ///
@@ -211,26 +213,20 @@ pub fn query(
     )
 }
 
-/// Obtains a single page of open pull requests and associated information from GitHub.
-fn query_single_page(
+/// Sends a generic GitHub GraphQL query.
+pub(super) fn send_github_query<R: DeserializeOwned + 'static, T: Serialize + ?Sized>(
     client: &Client,
     token: &str,
-    owner: &str,
-    repo: &str,
-    after: Option<&str>,
-) -> Box<Future<Item = (Vec<graphql::PullRequest>, PaginationState), Error = Error>> {
+    request: &T,
+) -> Box<Future<Item = R, Error = Error>> {
     info!("Preparing to send GitHub request");
-
     Box::new(
         client
             .post(GITHUB_ENDPOINT)
             .header(Authorization(Bearer {
                 token: token.to_owned(),
             }))
-            .json(&Request {
-                query: QUERY,
-                variables: Variables { owner, repo, after },
-            })
+            .json(request)
             .send()
             .and_then(|response| response.error_for_status())
             .inspect(|response| {
@@ -242,27 +238,46 @@ fn query_single_page(
                     rate_limit_remaining, rate_limit_limit
                 );
             })
-            .and_then(|mut response| response.json::<graphql::Reply>())
-            .map_err(Error::from)
-            .and_then(|reply| {
-                let prs = reply.data.repository.pull_requests.nodes;
-                let next_page = match reply.data.repository.pull_requests.page_info {
-                    graphql::PageInfo {
-                        has_next_page: true,
-                        end_cursor,
-                    } => PaginationState::HasNext(end_cursor),
-                    graphql::PageInfo {
-                        has_next_page: false,
-                        ..
-                    } => PaginationState::Done,
-                };
-                info!(
-                    "Obtained {} PRs from GitHub, has next page = {}",
-                    prs.len(),
-                    !next_page.is_done()
-                );
-                Ok((prs, next_page))
-            }),
+            .and_then(|mut response| response.json::<R>())
+            .map_err(Error::from),
+    )
+}
+
+/// Obtains a single page of open pull requests and associated information from GitHub.
+fn query_single_page(
+    client: &Client,
+    token: &str,
+    owner: &str,
+    repo: &str,
+    after: Option<&str>,
+) -> Box<Future<Item = (Vec<graphql::PullRequest>, PaginationState), Error = Error>> {
+    Box::new(
+        send_github_query(
+            client,
+            token,
+            &Request {
+                query: QUERY,
+                variables: Variables { owner, repo, after },
+            },
+        ).map(|reply: graphql::Reply| {
+            let prs = reply.data.repository.pull_requests.nodes;
+            let next_page = match reply.data.repository.pull_requests.page_info {
+                graphql::PageInfo {
+                    has_next_page: true,
+                    end_cursor,
+                } => PaginationState::HasNext(end_cursor),
+                graphql::PageInfo {
+                    has_next_page: false,
+                    ..
+                } => PaginationState::Done,
+            };
+            info!(
+                "Obtained {} PRs from GitHub, has next page = {}",
+                prs.len(),
+                !next_page.is_done()
+            );
+            (prs, next_page)
+        }),
     )
 }
 

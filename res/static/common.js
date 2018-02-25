@@ -54,7 +54,6 @@ $prs.onclick = function(e) {
         updateSelectCount();
     }
 
-
     if (HAS_ACTIVE_COMMENTS) {
         while (target) {
             if (target.className === 'comment') {
@@ -137,9 +136,24 @@ $('rollup').onclick = function() {
     }
 };
 
-function adjustScrollPosition(comment) {
+var CACHED_TIMELINES = {};
+function loadTimeline(comment) {
+    var number = comment.parentNode.parentNode.dataset.number;
     return function() {
-        comment.scrollTop = comment.scrollHeight;
+        if (CACHED_TIMELINES.hasOwnProperty(number)) {
+            return;
+        }
+        CACHED_TIMELINES[number] = true;
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                comment.innerHTML = xhr.responseText;
+                recomputeRelativeTime();
+                comment.scrollTop = comment.scrollHeight;
+            }
+        };
+        xhr.open('GET', '/timeline/' + number, true);
+        xhr.send();
     };
 }
 
@@ -212,7 +226,7 @@ var commentMetadata = document.getElementsByClassName('comment-metadata');
 for (var i = commentMetadata.length - 1; i >= 0; -- i) {
     var e = commentMetadata[i];
     var comment = e.parentNode.getElementsByClassName('comment')[0];
-    e.onmouseenter = adjustScrollPosition(comment);
+    e.onmouseenter = loadTimeline(comment);
     e.onclick = toggleVisibility(comment);
 }
 

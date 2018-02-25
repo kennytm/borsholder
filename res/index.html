@@ -93,51 +93,7 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                     updated {{ m::rel_time(datetime=update_at) }}
                 </span>
                 <div class="comment">
-                    {%- for event in pr.timeline -%}
-                        {%- set at = m::event_time(event=event) -%}
-                        {%- set at_html = m::rel_time(datetime=at) -%}
-                        {%- set user = m::event_user(event=event) -%}
-                        <p class="reply-line">
-                            {{ m::event_icon(event=event) }}
-                            {{ m::event_url(event=event, args=args, number=number, html=at_html) }}
-                            — {{ m::actor(username=user) }}
-                            {{ m::event_verb_phrase(event=event) }}
-                            {% if event.editor.login is defined -%}
-                            <small>
-                                [last edited {{ m::rel_time(datetime=event.lastEditedAt) }}
-                                by {{ m::actor(username=event.editor.login) }}]
-                            </small>
-                            {%- endif -%}
-                        </p>
-                        <div class="reply-body reply-body-{{ event.__typename }}">
-                            {%- if event.bodyHTML is defined -%}
-                                {{ event.bodyHTML | safe }}
-                            {%- elif event.__typename == "CrossReferencedEvent" -%}
-                                Ref {{ event.source.__typename }} #{{ event.source.number }}:
-                                <a href="{{ event.source.url }}">{{ event.source.title }}</a>
-                            {%- elif event.__typename == "ReferencedEvent" -%}
-                                Ref Commit <code>{{ event.commit.abbreviatedOid }}</code>:
-                                <a href="{{ event.commit.url }}">{{ event.commit.messageHeadline }}</a>
-                                {%- if event.commit.status.contexts is defined -%}
-                                <ul class="ci-status">
-                                    {{ m::cis(cis=event.commit.status.contexts) }}
-                                </ul>
-                                {%- endif -%}
-                            {%- elif event.__typename == "Commit" -%}
-                                Commit <code>{{ event.abbreviatedOid }}</code>:
-                                <a href="{{ event.url }}">{{ event.messageHeadline }}</a>
-                                {%- if event.status.contexts is defined -%}
-                                <ul class="ci-status">
-                                    {{ m::cis(cis=event.status.contexts) }}
-                                </ul>
-                                {%- endif -%}
-                            {%- elif event.__typename == "RenamedTitleEvent" -%}
-                                {{ event.previousTitle }}<br>
-                                ↓<br>
-                                {{ event.currentTitle }}
-                            {%- endif -%}
-                        </div>
-                    {%- endfor -%}
+                    <p>Loading…</p>
                 </div>
             </div>
         </li>
@@ -148,6 +104,6 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
         var HOMU_URL = '{{ args.homu_url | safe | url_last_path_component }}';
         var CLIENT_ID = '{{ args.homu_client_id }}';
     </script>
-    <script src="static/common.js?v=9"></script>
+    <script src="static/common.js?v=10"></script>
 </body>
 </html>
