@@ -27,6 +27,7 @@ html, body {
     font-weight: 100;
     grid-column: 1;
     grid-row: 1 / 3;
+    color: #ccc;
 }
 .title {
     font-weight: 500;
@@ -102,6 +103,17 @@ a:hover {
 }
 .status-Reviewing:hover {
     background: #f1f1f1; /* hsluv(0, 0, 95) */
+}
+.base-ref-master {
+    color: #000;
+}
+.base-ref-beta {
+    color: #2a6cff;
+    font-weight: 200;
+}
+.base-ref-stable {
+    color: #d34800;
+    font-weight: 300;
 }
 #queue > li > .ci-status {
     grid-column: 2;

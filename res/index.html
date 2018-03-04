@@ -55,7 +55,7 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
 {% endfor %}">
             <div class="number">
                 <div class="order">#0</div>
-                <label><input type="checkbox">{{ number }}</label>
+                <label class="base-ref-{{ pr.base_ref_name }}"><input type="checkbox">{{ number }}</label>
             </div>
             <div class="priority">
                 {%- if pr.priority == -1 -%}
