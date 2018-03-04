@@ -19,6 +19,9 @@ query ($owner: String!, $repo: String!, $after: String) {
         title
         additions
         deletions
+        baseRefName
+        headRefName
+        body
         labels(first: 10) {
           nodes {
             name

@@ -37,10 +37,18 @@ pub struct Pr {
     is_trying: bool,
     /// Priority. Rollups are always assigned a priority of `-1`.
     priority: i32,
+    /// PR approver name.
+    approver: String,
     /// Number of additions to the PR.
     additions: u32,
     /// Number of deletions to the PR.
     deletions: u32,
+    /// Base branch name of the PR.
+    base_ref_name: String,
+    /// Branch name of the PR in the author's repository.
+    head_ref_name: String,
+    /// PR body text.
+    body: String,
 }
 
 /// Statistics about all the pull requests in the queue.
@@ -70,8 +78,12 @@ impl Default for Pr {
             status: Status::Reviewing,
             is_trying: false,
             priority: 0,
+            approver: String::new(),
             additions: 0,
             deletions: 0,
+            base_ref_name: String::new(),
+            head_ref_name: String::new(),
+            body: String::new(),
         }
     }
 }
@@ -94,6 +106,9 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
                 ci_status: commit.status.map_or_else(Vec::new, |s| s.contexts),
                 additions: gh.additions,
                 deletions: gh.deletions,
+                base_ref_name: gh.base_ref_name,
+                head_ref_name: gh.head_ref_name,
+                body: gh.body,
                 ..Pr::default()
             },
         );
@@ -108,6 +123,7 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
         pr.status = h.status;
         pr.is_trying = h.is_trying;
         pr.priority = h.priority;
+        pr.approver = h.approver;
     }
 
     prs

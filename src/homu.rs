@@ -20,6 +20,8 @@ pub struct Entry {
     pub is_trying: bool,
     /// Priority. Rollups are always assigned a priority of `-1`.
     pub priority: i32,
+    /// Name of approver
+    pub approver: String,
 }
 
 /// The approval status of a pull request in the Homu queue.
@@ -88,6 +90,7 @@ pub fn query(client: &Client, url: &Url) -> Box<Future<Item = Vec<Entry>, Error 
                     let number = tds[2].parse::<u32>().context("invalid PR number")?;
                     let (status, is_trying) = parse_status(&tds[3]);
                     let priority = parse_priority(&tds[9]);
+                    let approver = tds.swap_remove(8);
                     let title = tds.swap_remove(5);
 
                     res.push(Entry {
@@ -96,6 +99,7 @@ pub fn query(client: &Client, url: &Url) -> Box<Future<Item = Vec<Entry>, Error 
                         status,
                         is_trying,
                         priority,
+                        approver,
                     });
                 }
 

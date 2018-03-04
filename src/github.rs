@@ -70,6 +70,9 @@ pub mod graphql {
         pub title: String,
         pub additions: u32,
         pub deletions: u32,
+        pub base_ref_name: String,
+        pub head_ref_name: String,
+        pub body: String,
         pub labels: Connection<Label>,
         pub commits: Connection<PullRequestCommit>,
     }
