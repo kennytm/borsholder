@@ -186,6 +186,9 @@ pub fn register_tera_filters(tera: &mut Tera) {
             Ok(false)
         }
     });
+    tera.register_filter("escape_rollup_instruction", |input, _| {
+        Ok(Value::String(try_get_value!("escape_rollup_instruction", "value", String, input).replace("&#x27;", "'&quot;'&quot;'")))
+    });
 }
 
 /// Parses a Tera value into a value.
@@ -212,6 +215,7 @@ pub struct TeraFailure {
 
 impl From<tera::Error> for TeraFailure {
     fn from(e: tera::Error) -> Self {
+        warn!("captured tera error: {:#?}", e);
         Self { kind: e.0 }
     }
 }

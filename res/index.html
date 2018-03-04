@@ -95,6 +95,20 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
                 <div class="comment">
                     <p>Loading…</p>
                 </div>
+                {%- if pr.status == "Approved" %}
+                    <span class="manual-rollup" title="Show manual rollup instruction" data-instruction="
+git fetch origin +refs/pull/{{ number }}/merge: &amp;&amp;
+git merge --no-ff FETCH_HEAD^2 -m '
+Rollup merge of #{{ number }} - {{ pr.author }}:{{ pr.head_ref_name }}, r={{ pr.approver }}
+
+{{ pr.title | escape_rollup_instruction }}
+
+{{ pr.body | escape_rollup_instruction }}
+'
+">
+                        :: ↺
+                    </span>
+                {%- endif -%}
             </div>
         </li>
         {%- endfor -%}

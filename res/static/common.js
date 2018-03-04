@@ -230,4 +230,9 @@ for (var i = commentMetadata.length - 1; i >= 0; -- i) {
     e.onclick = toggleVisibility(comment);
 }
 
+var manualRollups = document.getElementsByClassName('manual-rollup');
+for (var i = manualRollups.length - 1; i >= 0; -- i) {
+    manualRollups[i].onclick = function(e) { alert(e.target.dataset.instruction); };
+}
+
 document.body.removeChild($('loading-text'));
