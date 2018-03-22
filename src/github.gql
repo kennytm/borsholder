@@ -2,7 +2,7 @@ stringify![
 
 query ($owner: String!, $repo: String!, $after: String) {
   repository(owner: $owner, name: $repo) {
-    pullRequests(first: 99, after: $after, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
+    pullRequests(first: 99, after: $after, states: [OPEN]) {
       //# Cost of requesting 99 PRs is 1, and cost of requesting 100 PRs is 2. Don't know why.
       pageInfo {
         endCursor
