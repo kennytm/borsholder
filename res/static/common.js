@@ -31,10 +31,16 @@ $filter.onkeyup = $filter.onsearch = function() {
 function updateSelectCount() {
     var allInputs = document.querySelectorAll('#queue .number input');
     var selectedCount = 0;
+    var selectedNumbers = [];
     for (var i = allInputs.length - 1; i >= 0; -- i) {
-        selectedCount += allInputs[i].checked;
+        var input = allInputs[i];
+        if (input.checked) {
+            selectedCount += 1;
+            selectedNumbers.push('#' + input.parentNode.parentNode.parentNode.dataset.number);
+        }
     }
     $('select-count').innerHTML = selectedCount;
+    $('selected-numbers').value = selectedNumbers.join(', ');
 }
 function toggleCheckboxes(shouldChecked) {
     return function() {
@@ -46,8 +52,29 @@ function toggleCheckboxes(shouldChecked) {
         updateSelectCount();
     };
 };
-$('select').onclick = toggleCheckboxes(true);
-$('deselect').onclick = toggleCheckboxes(false);
+$('select').onclick = function() {
+    $('selection').style.display = 'flex';
+    var sn = $('selected-numbers');
+    sn.focus();
+    sn.select();
+};
+$('selection').onclick = function(e) {
+    if (e.target.id === 'selection') {
+        e.target.style.display = 'none';
+        updateSelectCount();
+    }
+};
+$('update-selection').onclick = function(e) {
+    var numbers = $('selected-numbers').value.match(/[0-9]+/g);
+    var allInputs = document.querySelectorAll('#queue .number input');
+    for (var i = allInputs.length - 1; i >= 0; -- i) {
+        var input = allInputs[i];
+        var number = input.parentNode.parentNode.parentNode.dataset.number;
+        input.checked = numbers.indexOf(number) >= 0;
+    }
+    $('selection').style.display = 'none';
+    updateSelectCount();
+};
 $prs.onclick = function(e) {
     var target = e.target;
     if (target.tagName === 'INPUT') {
