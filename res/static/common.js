@@ -64,16 +64,31 @@ $('selection').onclick = function(e) {
         updateSelectCount();
     }
 };
-$('update-selection').onclick = function(e) {
-    var numbers = $('selected-numbers').value.match(/[0-9]+/g);
+function updateSelections(cond) {
     var allInputs = document.querySelectorAll('#queue .number input');
     for (var i = allInputs.length - 1; i >= 0; -- i) {
         var input = allInputs[i];
-        var number = input.parentNode.parentNode.parentNode.dataset.number;
-        input.checked = numbers.indexOf(number) >= 0;
+        var prElem = input.parentNode.parentNode.parentNode;
+        input.checked = cond(prElem);
     }
     $('selection').style.display = 'none';
     updateSelectCount();
+}
+$('update-selection').onclick = function(e) {
+    var numbers = $('selected-numbers').value.match(/[0-9]+/g) || [];
+    updateSelections(function(prElem) {
+        return numbers.indexOf(prElem.dataset.number) >= 0;
+    });
+};
+$('select-rollups').onclick = function() {
+    updateSelections(function(prElem) {
+        return /^Approved:-1:/.test(prElem.dataset.priority);
+    });
+};
+$('select-none').onclick = function() {
+    updateSelections(function(prElem) {
+        return false;
+    });
 };
 $prs.onclick = function(e) {
     var target = e.target;
