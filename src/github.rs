@@ -1,13 +1,17 @@
 //! GitHub API access.
 
 use failure::Error;
-use reqwest::unstable::async::Client;
-use reqwest::header::{Authorization, Bearer, Headers, Raw};
-use std::str::from_utf8;
-use futures::future::Future;
+use futures::future::{Future, IntoFuture};
 use futures::stream::{unfold, Stream};
-use serde::ser::Serialize;
+use lru_time_cache::LruCache;
+use reqwest::header::{Authorization, Bearer, Headers, Raw};
+use reqwest::unstable::async::{Chunk, Client};
 use serde::de::DeserializeOwned;
+use serde::ser::Serialize;
+use serde_json;
+use std::str::from_utf8;
+use std::sync::Mutex;
+use std::time::Duration;
 
 /// Types related to the main GraphQL query.
 ///
@@ -164,6 +168,26 @@ const GITHUB_ENDPOINT: &str = "https://api.github.com/graphql";
 /// The main GraphQL query.
 const QUERY: &str = include!("github.gql");
 
+/// The key to look up a cached GitHub request.
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub(super) enum CacheKey {
+    /// The key for fetching the PR list.
+    List(Option<Box<str>>),
+    /// The key for fetching the timeline of a PR.
+    Timeline(u32),
+}
+
+impl<'a, 'v: 'a> From<&'a Request<'v>> for CacheKey {
+    fn from(req: &'a Request<'v>) -> Self {
+        CacheKey::List(req.variables.after.map(|v| v.to_owned().into_boxed_str()))
+    }
+}
+
+lazy_static! {
+    static ref CACHE: Mutex<LruCache<CacheKey, Chunk>> =
+        Mutex::new(LruCache::with_expiry_duration(Duration::from_secs(120)));
+}
+
 /// Pagination status for multi-page results (pull request list).
 enum PaginationState {
     /// This is the first page. Used to initialize the requests.
@@ -217,12 +241,31 @@ pub fn query(
 }
 
 /// Sends a generic GitHub GraphQL query.
-pub(super) fn send_github_query<R: DeserializeOwned + 'static, T: Serialize + ?Sized>(
+pub(super) fn send_github_query<'a, R, T>(
     client: &Client,
     token: &str,
-    request: &T,
-) -> Box<Future<Item = R, Error = Error>> {
+    request: &'a T,
+) -> Box<Future<Item = R, Error = Error>>
+where
+    R: DeserializeOwned + 'static,
+    T: Serialize + ?Sized + 'a,
+    &'a T: Into<CacheKey>,
+{
     info!("Preparing to send GitHub request");
+
+    let cache_key = request.into();
+    {
+        let cache_read_guard = CACHE.lock().unwrap();
+        if let Some(body) = cache_read_guard.peek(&cache_key) {
+            info!("Obtained cached response");
+            return Box::new(
+                serde_json::from_slice(body)
+                    .map_err(Error::from)
+                    .into_future(),
+            );
+        }
+    }
+
     Box::new(
         client
             .post(GITHUB_ENDPOINT)
@@ -241,8 +284,14 @@ pub(super) fn send_github_query<R: DeserializeOwned + 'static, T: Serialize + ?S
                     rate_limit_remaining, rate_limit_limit
                 );
             })
-            .and_then(|mut response| response.json::<R>())
-            .map_err(Error::from),
+            .and_then(|response| response.into_body().concat2())
+            .map_err(Error::from)
+            .and_then(|body| {
+                let mut cache_write_guard = CACHE.lock().unwrap();
+                let ret = serde_json::from_slice(&body).map_err(Error::from);
+                cache_write_guard.insert(cache_key, body);
+                ret.map_err(Error::from)
+            }),
     )
 }
 

@@ -26,6 +26,7 @@ extern crate lazy_static;
 extern crate libflate;
 #[macro_use]
 extern crate log;
+extern crate lru_time_cache;
 #[macro_use]
 extern crate maplit;
 #[macro_use]
@@ -36,6 +37,7 @@ extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;

@@ -1,10 +1,10 @@
 //! GitHub Timeline API access.
 
 use failure::Error;
-use reqwest::unstable::async::Client;
 use futures::Future;
+use github::{send_github_query, CacheKey};
+use reqwest::unstable::async::Client;
 use tera::Value;
-use github::send_github_query;
 
 /// Types related to the PR timeline GraphQL query.
 pub mod graphql {
@@ -58,6 +58,12 @@ struct Variables<'variables> {
     repo: &'variables str,
     /// PR number.
     number: u32,
+}
+
+impl<'a, 'v> From<&'a Request<'v>> for CacheKey {
+    fn from(req: &'a Request<'v>) -> Self {
+        CacheKey::Timeline(req.variables.number)
+    }
 }
 
 /// The Timeline GraphQL query.
