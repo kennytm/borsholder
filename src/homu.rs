@@ -1,11 +1,11 @@
 //! Home queue web scraper.
 
 use failure::{err_msg, Error, ResultExt};
+use futures::{Future, Stream};
 use kuchiki::parse_html;
 use kuchiki::traits::TendrilSink;
-use reqwest::unstable::async::Client;
 use reqwest::Url;
-use futures::{Future, Stream};
+use reqwest::unstable::async::Client;
 use tendril::Tendril;
 
 /// An entry in the Homu queue.

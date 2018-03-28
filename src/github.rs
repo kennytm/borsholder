@@ -255,7 +255,7 @@ where
 
     let cache_key = request.into();
     {
-        let cache_read_guard = CACHE.lock().unwrap();
+        let cache_read_guard = CACHE.lock().expect("poisoned");
         if let Some(body) = cache_read_guard.peek(&cache_key) {
             info!("Obtained cached response");
             return Box::new(
@@ -287,7 +287,7 @@ where
             .and_then(|response| response.into_body().concat2())
             .map_err(Error::from)
             .and_then(|body| {
-                let mut cache_write_guard = CACHE.lock().unwrap();
+                let mut cache_write_guard = CACHE.lock().expect("poisoned");
                 let ret = serde_json::from_slice(&body).map_err(Error::from);
                 cache_write_guard.insert(cache_key, body);
                 ret.map_err(Error::from)

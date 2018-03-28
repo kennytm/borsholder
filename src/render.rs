@@ -6,8 +6,8 @@ use homu::{Entry, Status};
 use reqwest::Url;
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::time::UNIX_EPOCH;
 use std::str::FromStr;
+use std::time::UNIX_EPOCH;
 use tera::{self, Tera, Value};
 
 /// Information of a pull request.
@@ -187,7 +187,10 @@ pub fn register_tera_filters(tera: &mut Tera) {
         }
     });
     tera.register_filter("escape_rollup_instruction", |input, _| {
-        Ok(Value::String(try_get_value!("escape_rollup_instruction", "value", String, input).replace("&#x27;", "'&quot;'&quot;'")))
+        Ok(Value::String(
+            try_get_value!("escape_rollup_instruction", "value", String, input)
+                .replace("&#x27;", "'&quot;'&quot;'"),
+        ))
     });
 }
 
@@ -214,6 +217,7 @@ pub struct TeraFailure {
 }
 
 impl From<tera::Error> for TeraFailure {
+    #[cfg_attr(feature = "cargo-clippy", allow(use_debug))]
     fn from(e: tera::Error) -> Self {
         warn!("captured tera error: {:#?}", e);
         Self { kind: e.0 }

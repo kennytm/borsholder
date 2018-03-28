@@ -4,17 +4,17 @@ use args::Args;
 use failure::Error;
 use futures::Stream;
 use futures::future::{empty, result, Future};
-use hyper::{self, StatusCode};
+use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::header::{AcceptEncoding, CacheControl, Connection, ConnectionOption, ContentEncoding,
                     ContentType, Encoding, Headers};
-use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::server::{Http, Request, Response, Service};
+use hyper::{self, StatusCode};
 use libflate::gzip::Encoder;
 use mime::{Mime, TEXT_HTML_UTF_8, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
-use reqwest::unstable::async::Client;
 use reqwest::Proxy;
+use reqwest::unstable::async::Client;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -129,7 +129,7 @@ impl Service for Handler {
 
 lazy_static! {
     /// The regex which represents path can be used for static resource.
-    static ref SAFE_PATH_RE: Regex = Regex::new(r"^/static/[^\\/]+$").expect("safe path regex");
+    static ref SAFE_PATH_RE: Regex = Regex::new(r"^/static/[\w.]+$").expect("safe path regex");
 
     /// The regex which represents the PR timeline path.
     static ref TIMELINE_PATH_RE: Regex = Regex::new(r"^/timeline/([0-9]+)$").expect("timeline path regex");

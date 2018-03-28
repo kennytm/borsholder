@@ -48,17 +48,17 @@ extern crate tokio_core;
 
 mod args;
 mod github;
-mod timeline;
 mod homu;
 mod render;
 mod server;
+mod timeline;
 
 use args::Args;
 use env_logger::{Builder, Env};
 use failure::Error;
 use server::serve;
-use structopt::StructOpt;
 use std::io::Write;
+use structopt::StructOpt;
 
 /// Runs the borsholder CLI.
 #[cfg_attr(feature = "cargo-clippy", allow(print_stdout))]
