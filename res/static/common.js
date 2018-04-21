@@ -30,17 +30,21 @@ $filter.onkeyup = $filter.onsearch = function() {
 };
 function updateSelectCount() {
     var allInputs = document.querySelectorAll('#queue .number input');
-    var selectedCount = 0;
     var selectedNumbers = [];
     for (var i = allInputs.length - 1; i >= 0; -- i) {
         var input = allInputs[i];
         if (input.checked) {
-            selectedCount += 1;
-            selectedNumbers.push('#' + input.parentNode.parentNode.parentNode.dataset.number);
+            var item = input.parentNode.parentNode.parentNode;
+            var number = item.dataset.number;
+            selectedNumbers.push([
+                number,
+                ' - #' + number + ' (' + item.getElementsByClassName('title')[0].innerText + ')\n',
+            ]);
         }
     }
-    $('select-count').innerHTML = selectedCount;
-    $('selected-numbers').value = selectedNumbers.join(', ');
+    selectedNumbers.sort(function(a, b) { return a[0] - b[0]; });
+    $('select-count').innerHTML = selectedNumbers.length;
+    $('selected-numbers').value = selectedNumbers.map(function(a) { return a[1]; }).join('');
 }
 function toggleCheckboxes(shouldChecked) {
     return function() {
