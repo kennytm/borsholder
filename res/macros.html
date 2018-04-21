@@ -234,3 +234,56 @@
         created {{ event.__typename }}
     {%- endif -%}
 {%- endmacro event_verb_phrase -%}
+
+{%- macro event(event) -%}
+    {%- set at = self::event_time(event=event) -%}
+    {%- set at_html = self::rel_time(datetime=at) -%}
+    {%- set user = self::event_user(event=event) -%}
+    <p class="reply-line">
+        {{ self::event_icon(event=event) }}
+        {{ self::event_url(event=event, html=at_html) }}
+        — {{ self::actor(username=user) }}
+        {{ self::event_verb_phrase(event=event) }}
+        {% if event.editor.login is defined -%}
+        <small>
+            [last edited {{ self::rel_time(datetime=event.lastEditedAt) }}
+            by {{ self::actor(username=event.editor.login) }}]
+        </small>
+        {%- endif -%}
+    </p>
+    <div class="reply-body reply-body-{{ event.__typename }}">
+        {%- if event.bodyHTML is defined -%}
+            {{ event.bodyHTML | safe }}
+        {%- elif event.__typename == "CrossReferencedEvent" -%}
+            Ref {{ event.source.__typename }} #{{ event.source.number }}:
+            <a href="{{ event.source.url }}">{{ event.source.title }}</a>
+        {%- elif event.__typename == "ReferencedEvent" -%}
+            Ref Commit <code>{{ event.commit.abbreviatedOid }}</code>:
+            <a href="{{ event.commit.url }}">{{ event.commit.messageHeadline }}</a>
+            {%- if event.commit.status.contexts is defined -%}
+            <ul class="ci-status">
+                {{ self::cis(cis=event.commit.status.contexts) }}
+            </ul>
+            {%- endif -%}
+        {%- elif event.__typename == "Commit" -%}
+            Commit <code>{{ event.abbreviatedOid }}</code>:
+            <a href="{{ event.url }}">{{ event.messageHeadline }}</a>
+            {%- if event.status.contexts is defined -%}
+            <ul class="ci-status">
+                {{ self::cis(cis=event.status.contexts) }}
+            </ul>
+            {%- endif -%}
+        {%- elif event.__typename == "RenamedTitleEvent" -%}
+            {{ event.previousTitle }}<br>
+            ↓<br>
+            {{ event.currentTitle }}
+        {%- endif -%}
+        {%- if event.__typename == "PullRequestReview" -%}
+            <div class="reply-subbody">
+                {%- for subevent in event.comments.nodes -%}
+                    {{ self::event(event=subevent) }}
+                {%- endfor -%}
+            </div>
+        {%- endif -%}
+    </div>
+{%- endmacro event -%}

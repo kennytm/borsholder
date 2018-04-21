@@ -7,23 +7,20 @@ query ($owner: String!, $repo: String!, $number: Int!) {
         nodes {
           __typename
           ...Commit
-          ... on Comment {
-            author {
-              login
-            }
-            bodyHTML
-            createdAt
-            editor {
-              login
-            }
-            lastEditedAt
-          }
+          ...Comment
           ... on IssueComment {
             url
           }
           ... on PullRequestReview {
             url
             state
+            comments(last: 2) {
+              nodes {
+                __typename
+                url
+                ...Comment
+              }
+            }
           }
           ... on PullRequestReviewComment {
             url
@@ -172,6 +169,18 @@ fragment Commit on Commit {
       state
     }
   }
+}
+
+fragment Comment on Comment {
+  author {
+    login
+  }
+  bodyHTML
+  createdAt
+  editor {
+    login
+  }
+  lastEditedAt
 }
 
 ]

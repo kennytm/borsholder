@@ -162,6 +162,11 @@ a:hover {
     margin: -12px -12px 6px -12px;
     padding: 6px 12px;
 }
+.reply-subbody > .reply-line {
+    background: #eee;
+    padding: 3px 6px;
+    margin-bottom: -6px;
+}
 .reply-body {
     margin-bottom: 18px;
 }
@@ -239,7 +244,7 @@ kbd {
 #filter {
     width: 16em;
 }
-.reply-body-ReferencedEvent, .reply-body-CrossReferencedEvent, .reply-body-Commit, .reply-body-RenamedTitleEvent {
+.reply-body-ReferencedEvent, .reply-body-CrossReferencedEvent, .reply-body-Commit, .reply-body-RenamedTitleEvent, .reply-subbody {
     font-size: 0.8em;
     padding-left: 1em;
     border-left: 6px double #00acf7;
@@ -249,6 +254,9 @@ kbd {
 }
 .reply-body-RenamedTitleEvent {
     border-left-color: #a2a900;
+}
+.reply-subbody {
+    border-left-color: #58b800;
 }
 #selection {
     position: fixed;
