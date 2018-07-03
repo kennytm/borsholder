@@ -187,9 +187,6 @@ fragment RequestedReviewer on RequestedReviewer {
   ... on User {
     login
   }
-  ... on Team {
-    name
-  }
 }
 
 ]
