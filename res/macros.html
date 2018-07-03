@@ -219,7 +219,7 @@
     {%- elif event.__typename == "ReviewRequestRemovedEvent" -%}
         removed review request
     {%- elif event.__typename == "ReviewRequestedEvent" -%}
-        requested review from {{ self::actor(username=event.subject.login) }}
+        requested review from {{ self::actor(username=event.requestedReviewer.login) }}
     {%- elif event.__typename == "SubscribedEvent" -%}
         subscribed
     {%- elif event.__typename == "UnassignedEvent" -%}

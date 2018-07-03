@@ -96,8 +96,8 @@ query ($owner: String!, $repo: String!, $number: Int!) {
               login
             }
             createdAt
-            subject {
-              login
+            requestedReviewer {
+              ...RequestedReviewer
             }
           }
           ... on ReviewRequestRemovedEvent {
@@ -105,8 +105,8 @@ query ($owner: String!, $repo: String!, $number: Int!) {
               login
             }
             createdAt
-            subject {
-              login
+            requestedReviewer {
+              ...RequestedReviewer
             }
           }
           ... on UnassignedEvent {
@@ -181,6 +181,15 @@ fragment Comment on Comment {
     login
   }
   lastEditedAt
+}
+
+fragment RequestedReviewer on RequestedReviewer {
+  ... on User {
+    login
+  }
+  ... on Team {
+    name
+  }
 }
 
 ]
