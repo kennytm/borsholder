@@ -139,6 +139,20 @@ query ($owner: String!, $repo: String!, $number: Int!) {
             }
             createdAt
           }
+          ... on MilestonedEvent {
+            actor {
+              login
+            }
+            createdAt
+            milestoneTitle
+          }
+          ... on DemilestonedEvent {
+            actor {
+              login
+            }
+            createdAt
+            milestoneTitle
+          }
           //# We can't report every event type yet, that will crash GitHub.
         }
       }

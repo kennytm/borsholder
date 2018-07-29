@@ -12,6 +12,7 @@
 //! [README]: https://github.com/kennytm/borsholder
 
 #![cfg_attr(feature = "cargo-clippy", warn(warnings, clippy_pedantic))]
+#![cfg_attr(feature = "cargo-clippy", allow(indexing_slicing, similar_names))]
 
 extern crate chrono;
 extern crate env_logger;
