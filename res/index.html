@@ -86,7 +86,9 @@ labels:{% for label in pr.labels %}{{ label.name }},{% endfor %}
             <div class="metadata">
                 opened {{ m::rel_time(datetime=pr.created_at) }} by {{ m::actor(username=pr.author) }}
                 ::
+                <span title="{{ sqrt(input=(pr.additions + 1) * (pr.deletions + 1)) }}">
                 <span class="additions">+{{ pr.additions }}</span>/<span class="deletions">−{{ pr.deletions }}</span>
+                </span>
                 ::
                 <span class="comment-metadata">
                     updated {{ m::rel_time(datetime=update_at) }}
