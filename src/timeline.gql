@@ -153,6 +153,18 @@ query ($owner: String!, $repo: String!, $number: Int!) {
             createdAt
             milestoneTitle
           }
+          ... on HeadRefForcePushedEvent {
+            actor {
+              login
+            }
+            beforeCommit {
+              abbreviatedOid
+            }
+            afterCommit {
+              abbreviatedOid
+            }
+            createdAt
+          }
           //# We can't report every event type yet, that will crash GitHub.
         }
       }

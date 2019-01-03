@@ -197,7 +197,10 @@
     {%- elif event.__typename == "HeadRefDeletedEvent" -%}
         deleted branch
     {%- elif event.__typename == "HeadRefForcePushedEvent" -%}
-        force pushed head-ref
+        force pushed
+        <code>{{ event.beforeCommit.abbreviatedOid }}</code>
+        →
+        <code>{{ event.afterCommit.abbreviatedOid }}</code>
     {%- elif event.__typename == "HeadRefRestoredEvent" -%}
         restored branch
     {%- elif event.__typename == "LabeledEvent" -%}

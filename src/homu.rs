@@ -76,7 +76,7 @@ pub fn query(client: &Client, url: &Url) -> Box<Future<Item = Vec<Entry>, Error 
                         .filter_map(|td| {
                             if let Some(elem) = td.as_element() {
                                 if elem.name.expanded() == expanded_name!(html "td") {
-                                    return Some(td.text_contents());
+                                    return Some(td.text_contents().trim().to_owned());
                                 }
                             }
                             None
