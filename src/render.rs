@@ -192,7 +192,7 @@ pub fn register_tera_filters(tera: &mut Tera) {
                 .replace("&#x27;", "'&quot;'&quot;'"),
         ))
     });
-    tera.register_global_function("sqrt", Box::new(|mut params| {
+    tera.register_function("sqrt", Box::new(|mut params| {
         let input = params.remove("input").and_then(|v| v.as_f64()).expect("number");
         Ok(Value::from(input.sqrt()))
     }));

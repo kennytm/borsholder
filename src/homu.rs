@@ -5,7 +5,7 @@ use futures::{Future, Stream};
 use kuchiki::parse_html;
 use kuchiki::traits::TendrilSink;
 use reqwest::Url;
-use reqwest::unstable::async::Client;
+use reqwest::async::Client;
 use tendril::Tendril;
 
 /// An entry in the Homu queue.

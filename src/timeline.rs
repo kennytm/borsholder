@@ -3,7 +3,7 @@
 use failure::Error;
 use futures::Future;
 use github::{send_github_query, CacheKey};
-use reqwest::unstable::async::Client;
+use reqwest::async::Client;
 use tera::Value;
 
 /// Types related to the PR timeline GraphQL query.

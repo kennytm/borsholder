@@ -42,7 +42,7 @@
     {%- for ci in cis -%}
         <li title="{{ ci.description }}">
             <a href="{{ ci.targetUrl }}">
-                {{ m::ci_status(state=ci.state, context=ci.context) }}
+                {{ self::ci_status(state=ci.state, context=ci.context) }}
                 <span class="hidden">{{ ci.description }}</span>
             </a>
         </li>

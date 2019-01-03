@@ -5,8 +5,7 @@ use failure::Error;
 use futures::Stream;
 use futures::future::{empty, result, Future};
 use hyper::header::CacheDirective::{MaxAge, Public};
-use hyper::header::{AcceptEncoding, CacheControl, Connection, ConnectionOption, ContentEncoding,
-                    ContentType, Encoding, Headers};
+use hyper::header::{AcceptEncoding, CacheControl, ContentEncoding, ContentType, Encoding};
 use hyper::server::{Http, Request, Response, Service};
 use hyper::{self, StatusCode};
 use libflate::gzip::Encoder;
@@ -14,7 +13,8 @@ use mime::{Mime, TEXT_HTML_UTF_8, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
 use reqwest::Proxy;
-use reqwest::unstable::async::Client;
+use reqwest::async::Client;
+use reqwest::header::{HeaderMap, HeaderValue, CONNECTION};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -40,14 +40,14 @@ pub fn serve(mut args: Args) -> Result<(), Error> {
 
     let mut builder = Client::builder();
     if let Some(proxy) = args.proxy.take() {
-        builder.proxy(Proxy::all(proxy)?);
+        builder = builder.proxy(Proxy::all(proxy)?);
     }
-    let mut default_headers = Headers::new();
-    default_headers.set(Connection(vec![ConnectionOption::Close]));
+    let mut default_headers = HeaderMap::new();
+    default_headers.insert(CONNECTION, HeaderValue::from_str("Close").unwrap());
     let client = builder
         .timeout(Duration::from_secs(120))
         .default_headers(default_headers)
-        .build(&handle)?;
+        .build()?;
 
     let address = args.address;
     let handler = Rc::new(Handler {

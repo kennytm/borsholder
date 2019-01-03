@@ -4,12 +4,11 @@ use failure::Error;
 use futures::future::{Future, IntoFuture};
 use futures::stream::{unfold, Stream};
 use lru_time_cache::LruCache;
-use reqwest::header::{Authorization, Bearer, Headers, Raw};
-use reqwest::unstable::async::{Chunk, Client};
+use reqwest::async::{Chunk, Client};
+use reqwest::header::{AUTHORIZATION, HeaderMap};
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use serde_json;
-use std::str::from_utf8;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -269,9 +268,7 @@ where
     Box::new(
         client
             .post(GITHUB_ENDPOINT)
-            .header(Authorization(Bearer {
-                token: token.to_owned(),
-            }))
+            .header(AUTHORIZATION, format!("Bearer {}", token))
             .json(request)
             .send()
             .and_then(|response| response.error_for_status())
@@ -334,11 +331,10 @@ fn query_single_page(
 }
 
 /// Fetch rate-limit related number from the GitHub response.
-fn fetch_rate_limit(headers: &Headers, name: &str) -> u32 {
+fn fetch_rate_limit(headers: &HeaderMap, name: &str) -> u32 {
     headers
-        .get_raw(name)
-        .and_then(Raw::one)
-        .and_then(|one| from_utf8(one).ok())
+        .get(name)
+        .and_then(|one| one.to_str().ok())
         .and_then(|string| string.parse().ok())
         .unwrap_or(0)
 }
