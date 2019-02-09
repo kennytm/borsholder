@@ -4,8 +4,8 @@ use failure::{err_msg, Error, ResultExt};
 use futures::{Future, Stream};
 use kuchiki::parse_html;
 use kuchiki::traits::TendrilSink;
-use reqwest::Url;
 use reqwest::async::Client;
+use reqwest::Url;
 use tendril::Tendril;
 
 /// An entry in the Homu queue.
@@ -68,10 +68,12 @@ pub fn query(client: &Client, url: &Url) -> Box<Future<Item = Vec<Entry>, Error 
             .map_err(Error::from)
             .and_then(|doc| {
                 let mut res = Vec::new();
-                for tr in doc.select("#queue > tbody > tr")
+                for tr in doc
+                    .select("#queue > tbody > tr")
                     .expect("well-formed CSS query")
                 {
-                    let mut tds = tr.as_node()
+                    let mut tds = tr
+                        .as_node()
                         .children()
                         .filter_map(|td| {
                             if let Some(elem) = td.as_element() {

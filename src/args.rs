@@ -21,24 +21,39 @@ pub struct Args {
     pub repository: String,
 
     /// URL to access the Homu queue.
-    #[structopt(long = "homu-queue-url", help = "URL to the Homu queue",
-                default_value = "https://buildbot2.rust-lang.org/homu/queue/rust")]
+    #[structopt(
+        long = "homu-queue-url",
+        help = "URL to the Homu queue",
+        default_value = "https://buildbot2.rust-lang.org/homu/queue/rust"
+    )]
     #[serde(serialize_with = "serialize_url")]
     pub homu_url: Url,
 
     /// Client ID of the Homu GitHub OAuth App.
-    #[structopt(long = "homu-client-id", help = "Client ID of the Homu GitHub OAuth App",
-                default_value = "f828d548f928f1e11199")]
+    #[structopt(
+        long = "homu-client-id",
+        help = "Client ID of the Homu GitHub OAuth App",
+        default_value = "f828d548f928f1e11199"
+    )]
     pub homu_client_id: String,
 
     /// Socket address of the local web server.
-    #[structopt(short = "l", long = "listen", help = "Address of local server",
-                default_value = "127.0.0.1:55727")]
+    #[structopt(
+        short = "l",
+        long = "listen",
+        help = "Address of local server",
+        default_value = "127.0.0.1:55727"
+    )]
     pub address: SocketAddr,
 
     /// Directory to find Tera templates and static resources
-    #[structopt(short = "i", long = "templates", help = "Directory of the templates",
-                default_value = "res", parse(from_os_str))]
+    #[structopt(
+        short = "i",
+        long = "templates",
+        help = "Directory of the templates",
+        default_value = "res",
+        parse(from_os_str)
+    )]
     #[serde(skip_serializing)]
     pub templates: PathBuf,
 

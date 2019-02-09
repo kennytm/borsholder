@@ -3,18 +3,18 @@
 use args::Args;
 use failure::Error;
 use flate2::{write::GzEncoder, Compression};
-use futures::Stream;
 use futures::future::{empty, result, Future};
+use futures::Stream;
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::header::{AcceptEncoding, CacheControl, ContentEncoding, ContentType, Encoding};
 use hyper::server::{Http, Request, Response, Service};
 use hyper::{self, StatusCode};
-use mime::{Mime, TEXT_HTML_UTF_8, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
+use mime::{Mime, IMAGE_PNG, TEXT_CSS, TEXT_HTML_UTF_8, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
-use reqwest::Proxy;
 use reqwest::async::Client;
 use reqwest::header::{HeaderMap, HeaderValue, CONNECTION};
+use reqwest::Proxy;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -56,7 +56,8 @@ pub fn serve(mut args: Args) -> Result<(), Error> {
         args: Rc::new(args),
     });
 
-    let serve = Http::new().serve_addr_handle(&address, &handle, move || Ok(Rc::clone(&handler)))?;
+    let serve =
+        Http::new().serve_addr_handle(&address, &handle, move || Ok(Rc::clone(&handler)))?;
 
     let conn_handle = handle.clone();
     handle.spawn(
@@ -187,7 +188,8 @@ impl Handler {
                 if SAFE_PATH_RE.is_match(path.as_bytes()) {
                     let path = self.args.templates.join(&path[1..]);
                     if path.exists() {
-                        let mime = path.extension()
+                        let mime = path
+                            .extension()
                             .and_then(OsStr::to_str)
                             .and_then(|ext| KNOWN_CONTENT_TYPES.get(ext));
 
@@ -230,7 +232,8 @@ impl Handler {
                     let prs = parse_prs(github, homu);
                     let stats = summarize_prs(prs.values());
                     let data = RenderData { prs, stats, args };
-                    let body = tera.borrow()
+                    let body = tera
+                        .borrow()
                         .render("index.html", &data)
                         .map_err(TeraFailure::from)?;
                     Ok(body)
@@ -249,8 +252,10 @@ impl Handler {
                 &args.owner,
                 &args.repository,
                 number,
-            ).and_then(move |timeline| {
-                let body = tera.borrow()
+            )
+            .and_then(move |timeline| {
+                let body = tera
+                    .borrow()
                     .render("timeline.html", &TimelineRenderData { timeline })
                     .map_err(TeraFailure::from)?;
                 Ok(body)

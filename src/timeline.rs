@@ -89,6 +89,7 @@ pub fn query(
                     number,
                 },
             },
-        ).map(|reply: graphql::Reply| reply.data.repository.pull_request.timeline.nodes),
+        )
+        .map(|reply: graphql::Reply| reply.data.repository.pull_request.timeline.nodes),
     )
 }

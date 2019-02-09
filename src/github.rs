@@ -278,7 +278,8 @@ pub fn query(
                     next_page.as_after(),
                 ))
             }
-        }).concat2(),
+        })
+        .concat2(),
     )
 }
 
@@ -294,6 +295,10 @@ where
     &'a T: Into<CacheKey>,
 {
     info!("Preparing to send GitHub request");
+    debug!(
+        "GitHub request: {}",
+        serde_json::to_string(request).unwrap()
+    );
 
     let cache_key = request.into();
     {
@@ -352,7 +357,8 @@ fn query_single_page(
                 query: QUERY,
                 variables: Variables { owner, repo, after },
             },
-        ).map(|reply: graphql::Reply| {
+        )
+        .map(|reply: graphql::Reply| {
             let prs = reply.data.repository.pull_requests.nodes;
             let next_page = match reply.data.repository.pull_requests.page_info {
                 graphql::PageInfo {
