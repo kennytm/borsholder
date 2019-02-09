@@ -19,12 +19,12 @@ extern crate env_logger;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate flate2;
 extern crate futures;
 extern crate hyper;
 extern crate kuchiki;
 #[macro_use]
 extern crate lazy_static;
-extern crate libflate;
 #[macro_use]
 extern crate log;
 extern crate lru_time_cache;

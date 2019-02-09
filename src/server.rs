@@ -2,13 +2,13 @@
 
 use args::Args;
 use failure::Error;
+use flate2::{write::GzEncoder, Compression};
 use futures::Stream;
 use futures::future::{empty, result, Future};
 use hyper::header::CacheDirective::{MaxAge, Public};
 use hyper::header::{AcceptEncoding, CacheControl, ContentEncoding, ContentType, Encoding};
 use hyper::server::{Http, Request, Response, Service};
 use hyper::{self, StatusCode};
-use libflate::gzip::Encoder;
 use mime::{Mime, TEXT_HTML_UTF_8, IMAGE_PNG, TEXT_CSS, TEXT_JAVASCRIPT};
 use regex::bytes::Regex;
 use render::{parse_prs, register_tera_filters, summarize_prs, Pr, PrStats, TeraFailure};
@@ -286,9 +286,9 @@ fn set_response_body<R: Read>(
 ) -> io::Result<()> {
     let mut compressed = Vec::new();
     if can_gzip {
-        let mut encoder = Encoder::new(compressed)?;
+        let mut encoder = GzEncoder::new(compressed, Compression::fast());
         io::copy(&mut body, &mut encoder)?;
-        compressed = encoder.finish().into_result()?;
+        compressed = encoder.finish()?;
         response
             .headers_mut()
             .set(ContentEncoding(vec![Encoding::Gzip]));
