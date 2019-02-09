@@ -31,6 +31,18 @@ query ($owner: String!, $repo: String!, $after: String) {
         commits(last: 1) {
           nodes {
             commit {
+              checkSuites(first: 3) {
+                nodes {
+                  checkRuns(first: 5) {
+                    nodes {
+                      name
+                      title
+                      permalink
+                      conclusion
+                    }
+                  }
+                }
+              }
               status {
                 contexts {
                   context

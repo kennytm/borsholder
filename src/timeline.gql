@@ -187,6 +187,18 @@ fragment Commit on Commit {
   committedDate
   abbreviatedOid
   messageHeadline
+  checkSuites(first: 3) {
+    nodes {
+      checkRuns(first: 5) {
+        nodes {
+          name
+          title
+          permalink
+          conclusion
+        }
+      }
+    }
+  }
   status {
     contexts {
       context

@@ -11,11 +11,11 @@
 {%- endmacro label %}
 
 {%- macro ci_status(state, context) -%}
-    {%- if state == "ERROR" -%}
+    {%- if state == "ERROR" or state == "TIMED_OUT" -%}
         ❗️
     {%- elif state == "FAILURE" -%}
         ❌
-    {%- elif state == "PENDING" -%}
+    {%- elif state == "PENDING" or state is undefined -%}
         🌕
     {%- elif state == "SUCCESS" -%}
         ✔️
@@ -33,6 +33,10 @@
         appveyor
     {%- elif context == "continuous-integration/appveyor/branch" -%}
         appveyor
+    {%- elif context == "Travis CI - Pull Request" -%}
+        travis
+    {%- elif context == "Travis CI - Branch" -%}
+        travis
     {%- else -%}
         {{ context }}
     {%- endif -%}
@@ -40,10 +44,9 @@
 
 {%- macro cis(cis) -%}
     {%- for ci in cis -%}
-        <li title="{{ ci.description }}">
-            <a href="{{ ci.targetUrl }}">
-                {{ self::ci_status(state=ci.state, context=ci.context) }}
-                <span class="hidden">{{ ci.description }}</span>
+        <li title="{{ ci.description | default(value=ci.title) }}">
+            <a href="{{ ci.targetUrl | default(value=ci.permalink) }}">
+                {{ self::ci_status(state=ci.state | default(value=ci.conclusion), context=ci.context | default(value=ci.name)) }}
             </a>
         </li>
     {%- endfor -%}
@@ -263,9 +266,14 @@
         {%- elif event.__typename == "ReferencedEvent" -%}
             Ref Commit <code>{{ event.commit.abbreviatedOid }}</code>:
             <a href="{{ event.commit.url }}">{{ event.commit.messageHeadline }}</a>
-            {%- if event.commit.status.contexts is defined -%}
+            {%- if event.commit.status.contexts is defined or event.commit.checkSuites.nodes | length != 0 -%}
             <ul class="ci-status">
-                {{ self::cis(cis=event.commit.status.contexts) }}
+                {%- if event.commit.status.contexts is defined -%}
+                    {{ self::cis(cis=event.commit.status.contexts) }}
+                {%- endif -%}
+                {%- for suite in event.commit.checkSuites.nodes -%}
+                    {{ self::cis(cis=suite.checkRuns.nodes) }}
+                {%- endfor -%}
             </ul>
             {%- endif -%}
         {%- elif event.__typename == "Commit" -%}

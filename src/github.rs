@@ -5,7 +5,7 @@ use futures::future::{Future, IntoFuture};
 use futures::stream::{unfold, Stream};
 use lru_time_cache::LruCache;
 use reqwest::async::{Chunk, Client};
-use reqwest::header::{AUTHORIZATION, HeaderMap};
+use reqwest::header::{HeaderMap, ACCEPT, AUTHORIZATION};
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use serde_json;
@@ -16,7 +16,7 @@ use std::time::Duration;
 ///
 /// Please see [GitHub's GraphQL schema] for details.
 ///
-/// [GitHub's GraphQL schema]: https://developer.github.com/v4/reference/query/
+/// [GitHub's GraphQL schema]: https://developer.github.com/v4/query/
 pub mod graphql {
     #![cfg_attr(feature = "cargo-clippy", allow(missing_docs_in_private_items))]
 
@@ -103,6 +103,7 @@ pub mod graphql {
     #[serde(rename_all = "camelCase")]
     pub struct Commit {
         pub status: Option<Status>,
+        pub check_suites: Connection<CheckSuite>,
     }
 
     #[derive(Deserialize)]
@@ -118,6 +119,21 @@ pub mod graphql {
         pub description: String,
         pub target_url: String,
         pub state: StatusState,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct CheckSuite {
+        pub check_runs: Connection<CheckRun>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct CheckRun {
+        pub name: String,
+        pub title: String,
+        pub permalink: String,
+        pub conclusion: Option<CheckConclusionState>,
     }
 
     #[derive(Deserialize, Serialize, PartialEq, Eq, Clone, Copy)]
@@ -136,6 +152,33 @@ pub mod graphql {
         Failure,
         Pending,
         Success,
+    }
+
+    #[derive(Deserialize, Clone, Copy)]
+    #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+    pub enum CheckConclusionState {
+        ActionRequired,
+        Cancelled,
+        Failure,
+        Neutral,
+        Success,
+        TimedOut,
+    }
+
+    impl From<CheckRun> for StatusContext {
+        fn from(run: CheckRun) -> Self {
+            Self {
+                context: run.name,
+                description: run.title,
+                target_url: run.permalink,
+                state: match run.conclusion {
+                    None => StatusState::Pending,
+                    Some(CheckConclusionState::Failure) => StatusState::Failure,
+                    Some(CheckConclusionState::Success) => StatusState::Success,
+                    Some(_) => StatusState::Error,
+                },
+            }
+        }
     }
 }
 
@@ -269,6 +312,7 @@ where
         client
             .post(GITHUB_ENDPOINT)
             .header(AUTHORIZATION, format!("Bearer {}", token))
+            .header(ACCEPT, "application/vnd.github.antiope-preview+json") // enable Checks
             .json(request)
             .send()
             .and_then(|response| response.error_for_status())

@@ -94,6 +94,20 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
 
     for mut gh in github_entries {
         let commit = gh.commits.nodes.swap_remove(0).commit;
+        let ci_status = commit
+            .status
+            .into_iter()
+            .flat_map(|status| status.contexts)
+            .chain(
+                commit
+                    .check_suites
+                    .nodes
+                    .into_iter()
+                    .flat_map(|suite| suite.check_runs.nodes)
+                    .map(Into::into),
+            )
+            .collect::<Vec<_>>();
+
         prs.insert(
             gh.number,
             Pr {
@@ -103,7 +117,7 @@ pub fn parse_prs(github_entries: Vec<PullRequest>, homu_entries: Vec<Entry>) -> 
                 mergeable: gh.mergeable,
                 title: gh.title,
                 labels: gh.labels.nodes,
-                ci_status: commit.status.map_or_else(Vec::new, |s| s.contexts),
+                ci_status,
                 additions: gh.additions,
                 deletions: gh.deletions,
                 base_ref_name: gh.base_ref_name,
